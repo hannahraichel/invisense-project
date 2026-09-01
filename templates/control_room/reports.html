@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Reports — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Control room</span>{% endblock %}
+{% block page_title %}Post-exam reports{% endblock %}
+{% block page_subtitle %}Auditable logs of incidents and resolutions, by session{% endblock %}
+
+{% block content %}
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-rows">
+        {% for session in page_obj %}
+        <div class="isx-row" style="align-items:flex-start; flex-direction:column; gap:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div>
+                    <div class="isx-row__title">{{ session.date }} · {{ session.shift }}</div>
+                    <div class="isx-row__meta">
+                        {% if session.is_active %}Active{% else %}Closed{% endif %}
+                        · {{ session.alert_set.count }} alert{{ session.alert_set.count|pluralize }} recorded
+                    </div>
+                </div>
+                <a href="{% url 'export_session_report' session.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+                    {% include "partials/icon.html" with name="download" %} Export CSV
+                </a>
+            </div>
+
+            {% if session.alert_set.count > 0 %}
+            <table class="isx-table" style="width:100%;">
+                <tr><th>Time</th><th>Hall</th><th>Type</th><th>Status</th></tr>
+                {% for alert in session.alert_set.all|slice:":5" %}
+                <tr>
+                    <td>{{ alert.timestamp|date:"H:i" }}</td>
+                    <td>{{ alert.hall.hall_number }}</td>
+                    <td>{{ alert.get_alert_type_display }}</td>
+                    <td>{{ alert.get_status_display }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% if session.alert_set.count > 5 %}
+            <p class="isx-small isx-muted">And {{ session.alert_set.count|add:"-5" }} more — export the CSV for the full log.</p>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No sessions found.</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="isx-pager">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+        {% if num == page_obj.number %}
+            <span class="is-current">{{ num }}</span>
+        {% else %}
+            <a href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

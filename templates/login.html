@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in — InviSense</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="isx-auth">
+        <div class="isx-auth__side">
+            <div class="isx-auth__side-top">
+                <span class="isx-brand__mark"></span>
+                <span class="isx-brand__name">InviSense</span>
+            </div>
+            <p class="isx-auth__quote">
+                "Every seat verified, every incident logged, every hall accounted for —
+                quietly, in real time."
+            </p>
+            <p class="isx-auth__foot">Examination Integrity System</p>
+        </div>
+
+        <div class="isx-auth__form-wrap">
+            <div class="isx-auth__form">
+                <h1>Sign in</h1>
+                <p class="isx-lede">Enter your credentials to reach your workspace.</p>
+
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="isx-flash__item" style="margin-bottom:18px;">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="isx-field">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+                    </div>
+                    <div class="isx-field">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                        Sign in
+                        {% include "partials/icon.html" with name="arrow-right" %}
+                    </button>
+                </form>
+
+                <div class="isx-demo-box">
+                    <strong>Demo accounts</strong> (seeded via <code>create_users.py</code>)<br>
+                    Admin — admin / adminpassword<br>
+                    Invigilator — invigilator1 / invpassword<br>
+                    Control room — controlroom / crpassword
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
