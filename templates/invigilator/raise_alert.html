@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Raise Alert — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Invigilator</span>{% endblock %}
+{% block page_title %}Silent alert{% endblock %}
+{% block page_subtitle %}Notify the control room without disrupting the hall{% endblock %}
+
+{% block content %}
+<div class="isx-panel" style="max-width: 560px;">
+    <div class="isx-panel__body">
+        {% if active_hall %}
+        <form method="POST">
+            {% csrf_token %}
+            <div class="isx-field">
+                <label>Hall</label>
+                <input type="text" value="Hall {{ active_hall.hall_number }}" disabled>
+            </div>
+
+            <div class="isx-field">
+                <label for="alert_type">Alert type</label>
+                <select name="alert_type" id="alert_type" required>
+                    {% for code, name in alert_types %}
+                    <option value="{{ code }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if student %}
+            <div class="isx-flash__item" style="border-left-color: var(--warning); margin-bottom: 20px;">
+                {% include "partials/icon.html" with name="flag" %}
+                Flagged student: <strong>{{ student.roll_number }}</strong> (Row {{ student.row }}, Seat {{ student.seat }})
+                <input type="hidden" name="student_id" value="{{ student.id }}">
+            </div>
+            {% else %}
+            <div class="isx-field">
+                <label for="student_id">Flag a scanned student (optional)</label>
+                <select name="student_id" id="student_id" onchange="toggleManualLocation()">
+                    <option value="">— General location (enter row/seat manually below) —</option>
+                    {% for s in scanned_students %}
+                    <option value="{{ s.id }}">Row {{ s.row }}, Seat {{ s.seat }} — {{ s.name|default:s.roll_number }} ({{ s.roll_number }})</option>
+                    {% endfor %}
+                </select>
+                <p class="isx-field__hint">
+                    {% if scanned_students %}
+                        Only students already checked in this hall appear here.
+                    {% else %}
+                        No one has been scanned in this hall yet — use the fields below instead.
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="isx-field-row" id="manual-location-fields">
+                <div class="isx-field">
+                    <label for="row">Row (optional)</label>
+                    <input type="text" name="row" id="row" placeholder="e.g. A">
+                </div>
+                <div class="isx-field">
+                    <label for="seat">Seat (optional)</label>
+                    <input type="text" name="seat" id="seat" placeholder="e.g. 5">
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="isx-field">
+                <label for="notes">Additional notes</label>
+                <input type="text" name="notes" id="notes" placeholder="Brief description of the issue">
+            </div>
+
+            <button type="submit" class="isx-btn isx-btn--danger isx-btn--block">
+                {% include "partials/icon.html" with name="alert-triangle" %} Send alert
+            </button>
+        </form>
+        {% else %}
+        <div class="isx-empty">
+            <p>You have no active hall assignment, so alerts can't be raised right now.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleManualLocation() {
+        const select = document.getElementById('student_id');
+        const rowInput = document.getElementById('row');
+        const seatInput = document.getElementById('seat');
+        if (!select || !rowInput || !seatInput) return;
+
+        const studentPicked = select.value !== '';
+        rowInput.disabled = studentPicked;
+        seatInput.disabled = studentPicked;
+        if (studentPicked) {
+            rowInput.value = '';
+            seatInput.value = '';
+        }
+    }
+</script>
+{% endblock %}

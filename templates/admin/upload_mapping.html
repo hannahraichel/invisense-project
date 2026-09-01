@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Upload Roster — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
+{% block page_title %}Upload students{% endblock %}
+{% block page_subtitle %}Import a roster, then auto-allocate seating — or import a fixed seating plan directly{% endblock %}
+
+{% block content %}
+<div class="isx-split">
+    <div class="isx-panel">
+        <div class="isx-panel__body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="session_id">Target exam session</label>
+                    <select id="session_id" name="session_id" required>
+                        {% for session in sessions %}
+                        <option value="{{ session.id }}">{{ session.date }} — {{ session.shift }}</option>
+                        {% empty %}
+                        <option value="" disabled>No active sessions — create one first</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="isx-field">
+                    <label for="mapping_file">CSV file</label>
+                    <input type="file" id="mapping_file" name="mapping_file" accept=".csv" required>
+                    <p class="isx-field__hint">Only <code>roll_number, name, subject_code</code> are required — see the formats to the right.</p>
+                </div>
+
+                <div style="text-align:right; margin-top: 22px;">
+                    <button type="submit" class="isx-btn isx-btn--accent" {% if not sessions %}disabled{% endif %}>
+                        {% include "partials/icon.html" with name="upload" %} Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">Two supported formats</div></div>
+        <div class="isx-panel__body">
+            <p class="isx-small" style="font-weight:600; margin-bottom:8px;">1. Roster only (recommended)</p>
+            <p class="isx-small isx-muted" style="margin-bottom:10px;">
+                Just the students — no seat planning needed. Auto-allocate from the session page afterwards.
+                Add an optional <code>exam_time</code> column if different subjects in the same shift
+                run at different times (e.g. MCA at 9:30–11:30, iMCA at 9:30–12:30) — it prints on the hall ticket.
+            </p>
+            <table class="isx-table">
+                <tr><th>roll_number</th><th>name</th><th>subject_code</th><th>exam_time</th></tr>
+                <tr><td>21CS045</td><td>A. Menon</td><td>MCA</td><td>9:30–11:30 AM</td></tr>
+                <tr><td>21CS046</td><td>R. Kumar</td><td>iMCA</td><td>9:30 AM–12:30 PM</td></tr>
+            </table>
+            <p class="isx-small isx-muted" style="margin-top:8px;">
+                Leave <code>exam_time</code> blank to just show the session's shift on the ticket instead.
+            </p>
+
+            <hr class="isx-hairline">
+
+            <p class="isx-small" style="font-weight:600; margin-bottom:8px;">2. Pre-set seating (advanced)</p>
+            <p class="isx-small isx-muted" style="margin-bottom:10px;">
+                Add <code>hall_number, row, seat</code> and each row is seated exactly where you specify —
+                the hall number must already exist in the target session. <code>exam_time</code> works here too.
+            </p>
+            <table class="isx-table">
+                <tr><th>hall_number</th><th>row</th><th>seat</th></tr>
+                <tr><td>101</td><td>C</td><td>14</td></tr>
+            </table>
+
+            <p class="isx-small isx-muted" style="margin-top:14px;">
+                Either way: rows with a roll number already imported for this session are skipped and
+                reported after upload — nothing is silently overwritten.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}{{ session.date }} — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Session</span>{% endblock %}
+{% block page_title %}{{ session.date }} · {{ session.shift }}{% endblock %}
+{% block page_subtitle %}
+    {{ session.halls.count }} hall{{ session.halls.count|pluralize }} ·
+    {{ session.student_count }} student{{ session.student_count|pluralize }} ·
+    {{ session.present_count }} checked in
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'download_hall_tickets' session.id %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="download" %} Hall tickets (PDF)
+</a>
+<a href="{% url 'upload_mapping' %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="upload" %} Upload roster
+</a>
+<form method="POST" action="{% url 'toggle_session' session.id %}" class="isx-switch-form">
+    {% csrf_token %}
+    {% if session.is_active %}
+        <button type="submit" class="isx-btn isx-btn--danger">
+            {% include "partials/icon.html" with name="x-circle" %} Close session
+        </button>
+    {% else %}
+        <button type="submit" class="isx-btn isx-btn--accent">
+            {% include "partials/icon.html" with name="check-circle" %} Reopen session
+        </button>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block content %}
+
+<div class="isx-grid isx-grid--3" style="margin-bottom:22px;">
+    <div class="isx-stat">
+        <div class="isx-stat__label">Status</div>
+        <div class="isx-stat__value" style="font-size:20px;">
+            {% if session.is_active %}
+                <span class="isx-tag isx-tag--success isx-tag--dot">Active</span>
+            {% else %}
+                <span class="isx-tag isx-tag--neutral">Closed</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Attendance</div>
+        <div class="isx-stat__value">{{ session.present_count }} <small>/ {{ session.student_count }}</small></div>
+    </div>
+    <div class="isx-stat isx-stat--accent">
+        <div class="isx-stat__label">Alerts logged</div>
+        <div class="isx-stat__value">{{ session.alert_count }}</div>
+    </div>
+</div>
+
+{% if unseated_count > 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body" style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+        <div>
+            <div style="font-weight:600; font-size:15px;">
+                {{ unseated_count }} student{{ unseated_count|pluralize }} waiting to be seated
+            </div>
+            <div class="isx-small isx-muted" style="margin-top:4px;">
+                {{ total_capacity }} seat{{ total_capacity|pluralize }} available across all halls.
+                Allocation mixes subjects/departments so neighbours differ where possible.
+            </div>
+        </div>
+        <form method="POST" action="{% url 'auto_allocate_seating' session.id %}">
+            {% csrf_token %}
+            <button type="submit" class="isx-btn isx-btn--accent">
+                {% include "partials/icon.html" with name="qrcode" %} Auto-allocate seating
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Halls &amp; invigilator assignment</div>
+            <div class="isx-panel__hint">Assign one invigilator per hall — they'll only see this hall in their scanner.</div>
+        </div>
+    </div>
+    <div class="isx-rows">
+        {% for hall in halls %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">Hall {{ hall.hall_number }}</div>
+                <div class="isx-row__meta">
+                    {{ hall.student_count }} / {{ hall.capacity }} seated · {{ hall.present_count }} checked in
+                    {% if hall.seats_remaining > 0 %} · {{ hall.seats_remaining }} seat{{ hall.seats_remaining|pluralize }} free{% endif %}
+                </div>
+            </div>
+            <div class="isx-row__side">
+                <form method="POST" action="{% url 'assign_invigilator' hall.id %}" style="display:flex; gap:8px; align-items:center;">
+                    {% csrf_token %}
+                    <select name="invigilator_id" onchange="this.form.submit()" style="padding:8px 10px; border:1px solid var(--line-strong); border-radius:3px; font-size:13px; background:var(--surface);">
+                        <option value="">— Unassigned —</option>
+                        {% for inv in invigilators %}
+                        <option value="{{ inv.id }}" {% if hall.invigilator_id == inv.id %}selected{% endif %}>{{ inv.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <noscript><button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">Save</button></noscript>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No halls defined for this session yet.</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if not invigilators %}
+<p class="isx-small isx-muted" style="margin-top:14px;">
+    No invigilator accounts exist yet.
+    <a href="{% url 'manage_users' %}" style="color:var(--accent-ink); font-weight:600;">Create one from Staff →</a>
+</p>
+{% endif %}
+
+{% endblock %}

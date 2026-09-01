@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Scanner — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Invigilator</span>{% endblock %}
+{% block page_title %}Scan &amp; verify{% endblock %}
+{% block page_subtitle %}
+    {% if active_hall %}
+        Hall {{ active_hall.hall_number }} · Rows {{ active_hall.row_range|default:"—" }}
+    {% else %}
+        No active hall assigned to you right now
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if active_hall %}
+<div class="isx-split">
+    <div class="isx-panel">
+        <div class="isx-panel__head">
+            <div class="isx-panel__title">Scan student QR</div>
+            <span class="isx-hall-chip">{% include "partials/icon.html" with name="qrcode" %} Hall {{ active_hall.hall_number }}</span>
+        </div>
+        <div class="isx-panel__body">
+            <div class="isx-scanner-frame">
+                <div id="qr-reader"></div>
+            </div>
+            <p class="isx-small isx-muted" style="margin-top:14px; text-align:center;">Align the student's QR code within the frame.</p>
+        </div>
+    </div>
+
+    <div class="isx-panel" id="result-card" style="display:none;">
+        <div class="isx-panel__head"><div class="isx-panel__title">Verification result</div></div>
+        <div class="isx-panel__body">
+            <div id="result-content" class="isx-result"></div>
+
+            <div style="margin-top:26px; display:flex; flex-direction:column; gap:10px;">
+                <p class="isx-small isx-muted">Is something wrong with this student? Flag it directly.</p>
+                <a href="#" id="flag-btn" class="isx-btn isx-btn--ghost" style="color:var(--danger); border-color:var(--danger);">
+                    {% include "partials/icon.html" with name="flag" %} Flag this student
+                </a>
+                <button onclick="resumeScan()" class="isx-btn isx-btn--accent">
+                    Scan next
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="isx-panel isx-panel--pad-0" id="roster-panel" style="margin-top:22px;">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Hall roster</div>
+            <div class="isx-panel__hint" id="roster-hint">{{ active_hall.present_count }} / {{ active_hall.student_count }} checked in</div>
+        </div>
+        <a href="{% url 'raise_alert' %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% include "partials/icon.html" with name="flag" %} Flag a student
+        </a>
+    </div>
+    <div class="isx-rows" id="roster-rows">
+        {% for s in roster %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">{{ s.name|default:s.roll_number }}</div>
+                <div class="isx-row__meta">Roll {{ s.roll_number }} · Row {{ s.row|default:"—" }}, Seat {{ s.seat|default:"—" }}</div>
+            </div>
+            <div class="isx-row__side">
+                {% if s.is_present %}
+                    <span class="isx-tag isx-tag--success isx-tag--dot">Present</span>
+                    <a href="{% url 'raise_alert' %}?student_id={{ s.id }}" class="isx-btn isx-btn--ghost isx-btn--sm">Flag</a>
+                {% else %}
+                    <span class="isx-tag isx-tag--neutral">Not yet</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No students seated in this hall yet.</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<div class="isx-panel">
+    <div class="isx-empty">
+        <p>You don't have an active hall assignment. Ask an admin to assign you to a hall for the current session.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if active_hall %}
+<script>
+    const html5QrCode = new Html5Qrcode("qr-reader");
+    const resultCard = document.getElementById('result-card');
+    const resultContent = document.getElementById('result-content');
+    const flagBtn = document.getElementById('flag-btn');
+
+    const ICONS = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5 1.8 19a1.5 1.5 0 0 0 1.3 2.2h17.8a1.5 1.5 0 0 0 1.3-2.2L13.5 3.5a1.7 1.7 0 0 0-3 0z"/><path d="M12 9.5v4.2M12 17h.01"/></svg>',
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9 9l6 6M15 9l-6 6"/></svg>'
+    };
+
+    function onScanSuccess(decodedText) {
+        html5QrCode.pause();
+
+        fetch('/api/verify-seat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ qr_data: decodedText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            resultCard.style.display = 'block';
+            let variant = 'error';
+            if (data.status === 'success') variant = 'success';
+            else if (data.status === 'warning') variant = 'warning';
+
+            resultContent.className = 'isx-result isx-result--' + variant;
+            resultContent.innerHTML = ICONS[variant] + '<span>' + data.message + '</span>';
+
+            if (data.student_id) {
+                flagBtn.href = `/raise-alert/?student_id=${data.student_id}`;
+                flagBtn.style.display = 'inline-flex';
+            } else {
+                flagBtn.style.display = 'none';
+            }
+
+            refreshRoster();
+        })
+        .catch(() => {
+            resultCard.style.display = 'block';
+            resultContent.className = 'isx-result isx-result--error';
+            resultContent.innerHTML = ICONS.error + '<span>Network error — please try scanning again.</span>';
+        });
+    }
+
+    function resumeScan() {
+        resultCard.style.display = 'none';
+        html5QrCode.resume();
+    }
+
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess
+    ).catch(err => {
+        console.error(`Error starting QR scanner: ${err}`);
+    });
+
+    function refreshRoster() {
+        fetch('/api/hall-roster/')
+            .then(res => res.json())
+            .then(data => {
+                const hint = document.getElementById('roster-hint');
+                if (hint) hint.textContent = `${data.present_count} / ${data.total_count} checked in`;
+
+                const rowsEl = document.getElementById('roster-rows');
+                if (!rowsEl) return;
+
+                if (!data.students.length) {
+                    rowsEl.innerHTML = '<div class="isx-empty"><p>No students seated in this hall yet.</p></div>';
+                    return;
+                }
+
+                rowsEl.innerHTML = data.students.map(s => `
+                    <div class="isx-row">
+                        <div>
+                            <div class="isx-row__title">${s.name || s.roll_number}</div>
+                            <div class="isx-row__meta">Roll ${s.roll_number} · Row ${s.row || '—'}, Seat ${s.seat || '—'}</div>
+                        </div>
+                        <div class="isx-row__side">
+                            ${s.is_present
+                                ? '<span class="isx-tag isx-tag--success isx-tag--dot">Present</span><a href="/raise-alert/?student_id=' + s.id + '" class="isx-btn isx-btn--ghost isx-btn--sm">Flag</a>'
+                                : '<span class="isx-tag isx-tag--neutral">Not yet</span>'}
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(() => {});
+    }
+
+    setInterval(refreshRoster, 6000);
+</script>
+{% endif %}
+{% endblock %}
