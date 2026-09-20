@@ -3,26 +3,27 @@
 {% block eyebrow %}<span class="isx-eyebrow">Invigilator</span>{% endblock %}
 {% block page_title %}Scan &amp; verify{% endblock %}
 {% block page_subtitle %}
-    {% if active_hall %}
-        Hall {{ active_hall.hall_number }} · Rows {{ active_hall.row_range|default:"—" }}
+    {% if current %}
+        {{ current.exam_session.subject }} · Hall {{ current.hall.hall_number }} ·
+        {{ current.exam_session.start_time|time:"g:i A" }}–{{ current.exam_session.end_time|time:"g:i A" }}
     {% else %}
-        No active hall assigned to you right now
+        No exam is active for you right now
     {% endif %}
 {% endblock %}
 
 {% block content %}
-{% if active_hall %}
+{% if current %}
 <div class="isx-split">
     <div class="isx-panel">
         <div class="isx-panel__head">
             <div class="isx-panel__title">Scan student QR</div>
-            <span class="isx-hall-chip">{% include "partials/icon.html" with name="qrcode" %} Hall {{ active_hall.hall_number }}</span>
+            <span class="isx-hall-chip">{% include "partials/icon.html" with name="qrcode" %} Hall {{ current.hall.hall_number }}</span>
         </div>
         <div class="isx-panel__body">
             <div class="isx-scanner-frame">
                 <div id="qr-reader"></div>
             </div>
-            <p class="isx-small isx-muted" style="margin-top:14px; text-align:center;">Align the student's QR code within the frame.</p>
+            <p class="isx-small isx-muted" style="margin-top:14px; text-align:center;">Align the student's hall-ticket QR within the frame.</p>
         </div>
     </div>
 
@@ -48,7 +49,7 @@
     <div class="isx-panel__head">
         <div>
             <div class="isx-panel__title">Hall roster</div>
-            <div class="isx-panel__hint" id="roster-hint">{{ active_hall.present_count }} / {{ active_hall.student_count }} checked in</div>
+            <div class="isx-panel__hint" id="roster-hint">{{ roster|length }} assigned</div>
         </div>
         <a href="{% url 'raise_alert' %}" class="isx-btn isx-btn--ghost isx-btn--sm">
             {% include "partials/icon.html" with name="flag" %} Flag a student
@@ -71,7 +72,7 @@
             </div>
         </div>
         {% empty %}
-        <div class="isx-empty"><p>No students seated in this hall yet.</p></div>
+        <div class="isx-empty"><p>No students assigned to this hall for this exam yet.</p></div>
         {% endfor %}
     </div>
 </div>
@@ -79,14 +80,34 @@
 {% else %}
 <div class="isx-panel">
     <div class="isx-empty">
-        <p>You don't have an active hall assignment. Ask an admin to assign you to a hall for the current session.</p>
+        <p>You don't have an active exam right now. The scanner turns on automatically
+        during your assigned exam's time window.</p>
     </div>
 </div>
+
+{% if upcoming %}
+<div class="isx-panel isx-panel--pad-0" style="margin-top:22px;">
+    <div class="isx-panel__head"><div class="isx-panel__title">Your upcoming exams</div></div>
+    <div class="isx-rows">
+        {% for eh in upcoming %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">{{ eh.exam_session.subject }} — Hall {{ eh.hall.hall_number }}</div>
+                <div class="isx-row__meta">
+                    {{ eh.exam_session.exam_date }} ·
+                    {{ eh.exam_session.start_time|time:"g:i A" }}–{{ eh.exam_session.end_time|time:"g:i A" }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
-{% if active_hall %}
+{% if current %}
 <script>
     const html5QrCode = new Html5Qrcode("qr-reader");
     const resultCard = document.getElementById('result-card');
@@ -102,7 +123,7 @@
     function onScanSuccess(decodedText) {
         html5QrCode.pause();
 
-        fetch('/api/verify-seat/', {
+        fetch('/api/verify-qr/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -160,7 +181,7 @@
                 if (!rowsEl) return;
 
                 if (!data.students.length) {
-                    rowsEl.innerHTML = '<div class="isx-empty"><p>No students seated in this hall yet.</p></div>';
+                    rowsEl.innerHTML = '<div class="isx-empty"><p>No students assigned to this hall for this exam yet.</p></div>';
                     return;
                 }
 

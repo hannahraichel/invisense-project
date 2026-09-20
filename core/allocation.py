@@ -1,115 +1,68 @@
 """
-Seat allocation for InviSense.
+Per-exam-session seat allocation.
 
-Given a roster of students (no hall/row/seat set yet) and a set of halls
-with a fixed capacity each, this assigns every student a hall + row + seat
-such that:
-
-  1. No hall receives more students than its capacity.
-  2. Adjacent seats (in fill order) alternate between subject/department
-     codes wherever possible — the standard "zig-zag" anti-copying seating
-     pattern used in real exam halls, so two students sitting next to each
-     other are unlikely to be writing the same paper.
-
-This is intentionally a simple, explainable round-robin interleave rather
-than a full 2D grid optimiser (which would need real seat-grid geometry per
-room) — it gives a materially better result than sequential seating with a
-few lines of code, without pretending to model physical room layouts we
-don't have.
+Unlike a one-off seating chart, this runs once per ExamSession: given the
+halls selected for that specific exam (ExamHall rows) and the roster
+students who don't yet have an ExamStudentAssignment for this session, it
+splits them into contiguous, evenly-sized blocks in roll-number order —
+e.g. 61 students across 2 halls -> 31 in the first hall, 30 in the second.
+This is deterministic and transparent (register-number order), matching
+how HODs actually assign halls on a real timetable.
 """
-
-from collections import defaultdict
 
 from django.db import transaction
 
-from .models import Student
+from .models import ExamStudentAssignment
 
 
 class AllocationError(Exception):
-    """Raised when the current roster/halls can't be allocated as requested."""
-
-
-def _interleave_by_subject(students):
-    """Round-robin merge students grouped by subject_code, roll-number order
-    within each group, so consecutive students differ in subject as often
-    as possible."""
-    groups = defaultdict(list)
-    for student in students:
-        groups[student.subject_code].append(student)
-
-    for group in groups.values():
-        group.sort(key=lambda s: s.roll_number)
-
-    ordered_groups = sorted(groups.values(), key=len, reverse=True)
-    interleaved = []
-    index = 0
-    while any(index < len(g) for g in ordered_groups):
-        for group in ordered_groups:
-            if index < len(group):
-                interleaved.append(group[index])
-        index += 1
-    return interleaved
+    """Raised when this exam session can't be auto-assigned right now."""
 
 
 def _seat_label(position, seats_per_row):
-    """0-based position -> ('A', 1), ('A', 2) ... ('B', 1) ..."""
     row_index = position // seats_per_row
     seat_number = position % seats_per_row + 1
-    if row_index < 26:
-        row_label = chr(65 + row_index)
-    else:
-        # Beyond Z, fall back to AA, AB, ... for very large halls.
-        row_label = chr(65 + row_index // 26 - 1) + chr(65 + row_index % 26)
+    row_label = chr(65 + row_index) if row_index < 26 else chr(65 + row_index // 26 - 1) + chr(65 + row_index % 26)
     return row_label, seat_number
 
 
 @transaction.atomic
-def auto_allocate_session(session):
-    """Allocate every unseated student in `session` to a hall/row/seat.
+def auto_assign_exam_session(exam_session):
+    """Assign every unassigned roster student (for this session) to one of
+    the halls selected for this exam, in contiguous roll-number blocks.
 
-    Returns a summary dict. Raises AllocationError if there isn't enough
-    capacity or no halls exist — nothing is written in that case.
+    Returns a summary dict. Raises AllocationError (writing nothing) if
+    there are no halls selected or no students waiting.
     """
-    halls = list(session.halls.order_by('hall_number'))
-    if not halls:
-        raise AllocationError("This session has no halls yet — add halls before allocating seats.")
+    exam_halls = list(exam_session.exam_halls.select_related('hall').order_by('hall__hall_number'))
+    if not exam_halls:
+        raise AllocationError("No halls have been selected for this exam yet — add halls before assigning.")
 
-    unseated = list(
-        Student.objects.filter(session=session, hall__isnull=True).order_by('roll_number')
-    )
-    if not unseated:
-        raise AllocationError("There are no unseated students in this session to allocate.")
+    students = list(exam_session.unassigned_students.order_by('roll_number'))
+    if not students:
+        raise AllocationError("Every roster student already has a hall assignment for this exam.")
 
-    total_capacity = sum(h.capacity for h in halls)
-    if len(unseated) > total_capacity:
-        raise AllocationError(
-            f"Not enough seats: {len(unseated)} student(s) waiting but only "
-            f"{total_capacity} seat(s) across {len(halls)} hall(s). "
-            f"Add more halls or increase capacity, then try again."
-        )
+    n_halls = len(exam_halls)
+    total = len(students)
+    base, remainder = divmod(total, n_halls)
 
-    ordered_students = _interleave_by_subject(unseated)
-
-    hall_summaries = []
+    summaries = []
     cursor = 0
-    for hall in halls:
-        take = min(hall.capacity, len(ordered_students) - cursor)
-        if take <= 0:
-            hall_summaries.append({'hall': hall.hall_number, 'seated': 0})
-            continue
+    for i, exam_hall in enumerate(exam_halls):
+        take = base + (1 if i < remainder else 0)
+        chunk = students[cursor:cursor + take]
 
-        chunk = ordered_students[cursor:cursor + take]
         for position, student in enumerate(chunk):
-            row_label, seat_number = _seat_label(position, hall.seats_per_row)
-            student.hall = hall
-            student.row = row_label
-            student.seat = str(seat_number)
-            student.save()
+            row_label, seat_number = _seat_label(position, exam_hall.hall.seats_per_row)
+            ExamStudentAssignment.objects.create(
+                exam_session=exam_session,
+                student=student,
+                hall=exam_hall.hall,
+                row=row_label,
+                seat=str(seat_number),
+            )
 
-        hall_summaries.append({'hall': hall.hall_number, 'seated': len(chunk)})
+        summaries.append({'hall': exam_hall.hall.hall_number, 'assigned': len(chunk)})
         cursor += take
 
-    return {
-        'total_allocated': cursor,
-        'halls': hall_summaries,
-    }
+    return {'total_assigned': cursor, 'halls': summaries}

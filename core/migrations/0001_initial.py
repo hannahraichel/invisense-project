@@ -1,4 +1,5 @@
-# Generated for the InviSense project
+# Generated for the InviSense project — rebuilt schema (see README:
+# "Database changes" for why this replaces the previous migrations).
 
 import django.contrib.auth.models
 import django.contrib.auth.validators
@@ -17,19 +18,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='ExamSession',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date', models.DateField()),
-                ('shift', models.CharField(max_length=50)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-            ],
-            options={
-                'ordering': ['-date', '-id'],
-            },
-        ),
         migrations.CreateModel(
             name='User',
             fields=[
@@ -59,13 +47,25 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
+            name='ExamPeriod',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=150)),
+                ('is_active', models.BooleanField(default=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                'ordering': ['-created_at'],
+            },
+        ),
+        migrations.CreateModel(
             name='Hall',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('hall_number', models.CharField(max_length=20)),
-                ('row_range', models.CharField(max_length=50)),
-                ('invigilator', models.ForeignKey(blank=True, limit_choices_to={'role': 'INVIGILATOR'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_halls', to=settings.AUTH_USER_MODEL)),
-                ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='halls', to='core.examsession')),
+                ('capacity', models.PositiveIntegerField(default=30)),
+                ('seats_per_row', models.PositiveIntegerField(default=6)),
+                ('exam_period', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='halls', to='core.examperiod')),
             ],
             options={
                 'ordering': ['hall_number'],
@@ -76,18 +76,80 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('roll_number', models.CharField(max_length=50)),
-                ('name', models.CharField(blank=True, max_length=100, null=True)),
-                ('subject_code', models.CharField(max_length=50)),
-                ('row', models.CharField(max_length=10)),
-                ('seat', models.CharField(max_length=10)),
-                ('qr_code', models.ImageField(blank=True, upload_to='qrcodes/')),
-                ('is_present', models.BooleanField(default=False)),
-                ('checked_in_at', models.DateTimeField(blank=True, null=True)),
-                ('hall', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='students', to='core.hall')),
-                ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='students', to='core.examsession')),
+                ('name', models.CharField(blank=True, default='', max_length=100)),
+                ('course', models.CharField(blank=True, default='', max_length=50)),
+                ('exam_period', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='students', to='core.examperiod')),
             ],
             options={
                 'ordering': ['roll_number'],
+            },
+        ),
+        migrations.CreateModel(
+            name='HallTicket',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('qr_token', models.CharField(editable=False, max_length=64, unique=True)),
+                ('qr_code', models.ImageField(blank=True, upload_to='qrcodes/')),
+                ('student', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='hall_ticket', to='core.student')),
+            ],
+        ),
+        migrations.CreateModel(
+            name='ExamSession',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('subject', models.CharField(max_length=100)),
+                ('exam_date', models.DateField()),
+                ('shift', models.CharField(blank=True, default='', max_length=50)),
+                ('start_time', models.TimeField()),
+                ('end_time', models.TimeField()),
+                ('status', models.CharField(choices=[('SCHEDULED', 'Scheduled'), ('CANCELLED', 'Cancelled'), ('CLOSED', 'Closed')], default='SCHEDULED', max_length=20)),
+                ('seating_confirmed', models.BooleanField(default=False)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('exam_period', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exam_sessions', to='core.examperiod')),
+            ],
+            options={
+                'ordering': ['exam_date', 'start_time'],
+            },
+        ),
+        migrations.CreateModel(
+            name='ExamHall',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('exam_session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exam_halls', to='core.examsession')),
+                ('hall', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='exam_halls', to='core.hall')),
+                ('invigilator', models.ForeignKey(blank=True, limit_choices_to={'role': 'INVIGILATOR'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='invigilating_halls', to=settings.AUTH_USER_MODEL)),
+            ],
+            options={
+                'ordering': ['hall__hall_number'],
+            },
+        ),
+        migrations.CreateModel(
+            name='ExamStudentAssignment',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('row', models.CharField(blank=True, default='', max_length=10)),
+                ('seat', models.CharField(blank=True, default='', max_length=10)),
+                ('exam_session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to='core.examsession')),
+                ('hall', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to='core.hall')),
+                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to='core.student')),
+            ],
+            options={
+                'ordering': ['hall__hall_number', 'row', 'seat'],
+            },
+        ),
+        migrations.CreateModel(
+            name='Attendance',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('status', models.CharField(choices=[('PRESENT', 'Present')], default='PRESENT', max_length=20)),
+                ('scanned_at', models.DateTimeField(auto_now_add=True)),
+                ('exam_session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attendances', to='core.examsession')),
+                ('hall', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attendances', to='core.hall')),
+                ('invigilator', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='marked_attendances', to=settings.AUTH_USER_MODEL)),
+                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attendances', to='core.student')),
+            ],
+            options={
+                'ordering': ['-scanned_at'],
             },
         ),
         migrations.CreateModel(
@@ -95,15 +157,15 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('alert_type', models.CharField(choices=[('SUSPICIOUS_ACTIVITY', 'Suspicious Activity'), ('NEED_SUPERVISOR', 'Need Supervisor'), ('MEDICAL_EMERGENCY', 'Medical Emergency'), ('OTHER', 'Other')], max_length=50)),
-                ('row', models.CharField(blank=True, max_length=10, null=True)),
-                ('seat', models.CharField(blank=True, max_length=10, null=True)),
+                ('row', models.CharField(blank=True, default='', max_length=10)),
+                ('seat', models.CharField(blank=True, default='', max_length=10)),
                 ('status', models.CharField(choices=[('PENDING', 'Pending'), ('ACKNOWLEDGED', 'Acknowledged'), ('RESOLVED', 'Resolved')], default='PENDING', max_length=20)),
                 ('timestamp', models.DateTimeField(auto_now_add=True)),
                 ('resolved_at', models.DateTimeField(blank=True, null=True)),
-                ('notes', models.TextField(blank=True, null=True)),
-                ('invigilator', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.examsession')),
+                ('notes', models.TextField(blank=True, default='')),
+                ('exam_session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='alerts', to='core.examsession')),
                 ('hall', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.hall')),
+                ('invigilator', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
                 ('student', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='core.student')),
             ],
             options={
@@ -111,31 +173,47 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.AddIndex(
-            model_name='examsession',
-            index=models.Index(fields=['is_active'], name='core_examse_is_acti_1a2b3c_idx'),
-        ),
-        migrations.AlterUniqueTogether(
-            name='hall',
-            unique_together={('session', 'hall_number')},
+            model_name='student',
+            index=models.Index(fields=['exam_period', 'roll_number'], name='core_studen_exam_pe_1a1a1a_idx'),
         ),
         migrations.AlterUniqueTogether(
             name='student',
-            unique_together={('session', 'roll_number', 'subject_code')},
+            unique_together={('exam_period', 'roll_number')},
+        ),
+        migrations.AlterUniqueTogether(
+            name='hall',
+            unique_together={('exam_period', 'hall_number')},
         ),
         migrations.AddIndex(
-            model_name='student',
-            index=models.Index(fields=['session', 'roll_number'], name='core_studen_session_4d5e6f_idx'),
+            model_name='examsession',
+            index=models.Index(fields=['exam_date', 'status'], name='core_examse_exam_da_2b2b2b_idx'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='examhall',
+            unique_together={('exam_session', 'hall')},
         ),
         migrations.AddIndex(
-            model_name='student',
-            index=models.Index(fields=['is_present'], name='core_studen_is_pres_7g8h9i_idx'),
+            model_name='examstudentassignment',
+            index=models.Index(fields=['exam_session', 'student'], name='core_examst_exam_se_3c3c3c_idx'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='examstudentassignment',
+            unique_together={('exam_session', 'student')},
+        ),
+        migrations.AddIndex(
+            model_name='attendance',
+            index=models.Index(fields=['exam_session', 'student'], name='core_attend_exam_se_4d4d4d_idx'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='attendance',
+            unique_together={('exam_session', 'student')},
         ),
         migrations.AddIndex(
             model_name='alert',
-            index=models.Index(fields=['status'], name='core_alert_status_0j1k2l_idx'),
+            index=models.Index(fields=['status'], name='core_alert_status_5e5e5e_idx'),
         ),
         migrations.AddIndex(
             model_name='alert',
-            index=models.Index(fields=['session', 'status'], name='core_alert_session_3m4n5o_idx'),
+            index=models.Index(fields=['exam_session', 'status'], name='core_alert_exam_se_6f6f6f_idx'),
         ),
     ]

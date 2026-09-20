@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}{{ exam_session.subject }} — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">{{ exam_session.exam_period.name }}</span>{% endblock %}
+{% block page_title %}{{ exam_session.subject }} — {{ exam_session.exam_date }}{% endblock %}
+{% block page_subtitle %}
+    {{ exam_session.start_time|time:"g:i A" }}–{{ exam_session.end_time|time:"g:i A" }}
+    {% if exam_session.shift %} · {{ exam_session.shift }}{% endif %}
+    {% if exam_session.status == 'CANCELLED' %} · <strong style="color:var(--danger);">Cancelled</strong>{% endif %}
+{% endblock %}
+
+{% block header_actions %}
+{% if not exam_session.seating_confirmed and exam_session.assigned_count > 0 %}
+<form method="POST" action="{% url 'confirm_allocation' exam_session.id %}">
+    {% csrf_token %}
+    <button type="submit" class="isx-btn isx-btn--accent">
+        {% include "partials/icon.html" with name="check-circle" %} Confirm allocation
+    </button>
+</form>
+{% elif exam_session.seating_confirmed %}
+<span class="isx-tag isx-tag--success isx-tag--dot" style="padding:10px 16px;">Allocation confirmed</span>
+{% endif %}
+<form method="POST" action="{% url 'cancel_exam_session' exam_session.id %}">
+    {% csrf_token %}
+    {% if exam_session.status == 'CANCELLED' %}
+        <button type="submit" class="isx-btn isx-btn--ghost">Reinstate exam</button>
+    {% else %}
+        <button type="submit" class="isx-btn isx-btn--danger">
+            {% include "partials/icon.html" with name="x-circle" %} Cancel exam
+        </button>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block content %}
+
+<div class="isx-grid isx-grid--3" style="margin-bottom:22px;">
+    <div class="isx-stat">
+        <div class="isx-stat__label">Halls running this exam</div>
+        <div class="isx-stat__value">{{ exam_halls|length }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Students assigned</div>
+        <div class="isx-stat__value">{{ exam_session.assigned_count }}</div>
+    </div>
+    <div class="isx-stat isx-stat--accent">
+        <div class="isx-stat__label">Checked in so far</div>
+        <div class="isx-stat__value">{{ exam_session.present_count }}</div>
+    </div>
+</div>
+
+{% if unassigned_count > 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body" style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+        <div>
+            <div style="font-weight:600; font-size:15px;">
+                {{ unassigned_count }} roster student{{ unassigned_count|pluralize }} not yet assigned to this exam
+            </div>
+            <div class="isx-small isx-muted" style="margin-top:4px;">
+                Splits them evenly across the halls below, in roll-number order — e.g. 61
+                students over 2 halls gives 31/30, not one hall filled first.
+            </div>
+        </div>
+        <form method="POST" action="{% url 'auto_assign_students' exam_session.id %}">
+            {% csrf_token %}
+            <button type="submit" class="isx-btn isx-btn--accent" {% if not exam_halls %}disabled{% endif %}>
+                {% include "partials/icon.html" with name="qrcode" %} Auto-assign students
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Halls for this exam</div>
+            <div class="isx-panel__hint">The same physical hall can run a different exam on a different day</div>
+        </div>
+    </div>
+    <div class="isx-rows">
+        {% for exam_hall in exam_halls %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">Hall {{ exam_hall.hall.hall_number }}</div>
+                <div class="isx-row__meta">{{ exam_hall.assigned_count }} assigned · {{ exam_hall.present_count }} checked in</div>
+            </div>
+            <div class="isx-row__side">
+                <form method="POST" action="{% url 'assign_exam_hall_invigilator' exam_hall.id %}" style="display:flex; gap:8px; align-items:center;">
+                    {% csrf_token %}
+                    <select name="invigilator_id" onchange="this.form.submit()" style="padding:8px 10px; border:1px solid var(--line-strong); border-radius:3px; font-size:13px; background:var(--surface);">
+                        <option value="">— Unassigned —</option>
+                        {% for inv in invigilators %}
+                        <option value="{{ inv.id }}" {% if exam_hall.invigilator_id == inv.id %}selected{% endif %}>{{ inv.username }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <form method="POST" action="{% url 'remove_exam_hall' exam_hall.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" {% if exam_hall.assigned_count > 0 %}disabled title="Has students assigned"{% endif %}>Remove</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No halls selected for this exam yet — add one below.</p></div>
+        {% endfor %}
+    </div>
+    {% if available_halls %}
+    <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+        <form method="POST" action="{% url 'add_exam_hall' exam_session.id %}" style="display:flex; gap:10px; align-items:center;">
+            {% csrf_token %}
+            <select name="hall_id" style="flex:1; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px; font-size:13.5px; background:var(--surface);">
+                {% for hall in available_halls %}
+                <option value="{{ hall.id }}">Hall {{ hall.hall_number }} ({{ hall.capacity }} seats)</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="isx-btn isx-btn--ghost">
+                {% include "partials/icon.html" with name="plus" %} Add to this exam
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if exam_session.assigned_count > 0 %}
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-panel__head">
+        <div class="isx-panel__title">Allocation review</div>
+    </div>
+    {% for exam_hall in exam_halls %}
+        <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+            <p style="font-weight:600; font-size:13.5px; margin-bottom:8px;">Hall {{ exam_hall.hall.hall_number }} — {{ exam_hall.review_assignments|length }} student{{ exam_hall.review_assignments|length|pluralize }}</p>
+            {% if exam_hall.review_assignments %}
+            <table class="isx-table">
+                <tr><th>Roll No.</th><th>Name</th><th>Row</th><th>Seat</th></tr>
+                {% for a in exam_hall.review_assignments %}
+                <tr><td>{{ a.student.roll_number }}</td><td>{{ a.student.name|default:"—" }}</td><td>{{ a.row }}</td><td>{{ a.seat }}</td></tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p class="isx-small isx-muted">No students assigned to this hall yet.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

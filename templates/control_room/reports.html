@@ -2,7 +2,7 @@
 {% block title %}Reports — InviSense{% endblock %}
 {% block eyebrow %}<span class="isx-eyebrow">Control room</span>{% endblock %}
 {% block page_title %}Post-exam reports{% endblock %}
-{% block page_subtitle %}Auditable logs of incidents and resolutions, by session{% endblock %}
+{% block page_subtitle %}Auditable logs of incidents and resolutions, by exam session{% endblock %}
 
 {% block content %}
 <div class="isx-panel isx-panel--pad-0">
@@ -11,10 +11,11 @@
         <div class="isx-row" style="align-items:flex-start; flex-direction:column; gap:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                 <div>
-                    <div class="isx-row__title">{{ session.date }} · {{ session.shift }}</div>
+                    <div class="isx-row__title">{{ session.subject }} — {{ session.exam_date }}</div>
                     <div class="isx-row__meta">
-                        {% if session.is_active %}Active{% else %}Closed{% endif %}
-                        · {{ session.alert_set.count }} alert{{ session.alert_set.count|pluralize }} recorded
+                        {{ session.exam_period.name }} ·
+                        {% if session.status == 'CANCELLED' %}Cancelled{% elif session.status == 'CLOSED' %}Closed{% else %}Scheduled{% endif %}
+                        · {{ session.alerts.count }} alert{{ session.alerts.count|pluralize }} recorded
                     </div>
                 </div>
                 <a href="{% url 'export_session_report' session.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
@@ -22,10 +23,10 @@
                 </a>
             </div>
 
-            {% if session.alert_set.count > 0 %}
+            {% if session.alerts.count > 0 %}
             <table class="isx-table" style="width:100%;">
                 <tr><th>Time</th><th>Hall</th><th>Type</th><th>Status</th></tr>
-                {% for alert in session.alert_set.all|slice:":5" %}
+                {% for alert in session.alerts.all|slice:":5" %}
                 <tr>
                     <td>{{ alert.timestamp|date:"H:i" }}</td>
                     <td>{{ alert.hall.hall_number }}</td>
@@ -34,13 +35,13 @@
                 </tr>
                 {% endfor %}
             </table>
-            {% if session.alert_set.count > 5 %}
-            <p class="isx-small isx-muted">And {{ session.alert_set.count|add:"-5" }} more — export the CSV for the full log.</p>
+            {% if session.alerts.count > 5 %}
+            <p class="isx-small isx-muted">And {{ session.alerts.count|add:"-5" }} more — export the CSV for the full log.</p>
             {% endif %}
             {% endif %}
         </div>
         {% empty %}
-        <div class="isx-empty"><p>No sessions found.</p></div>
+        <div class="isx-empty"><p>No exam sessions found.</p></div>
         {% endfor %}
     </div>
 </div>

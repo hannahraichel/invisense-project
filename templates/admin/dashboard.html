@@ -1,24 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}Overview — InviSense{% endblock %}
+{% block title %}Exam Periods — InviSense{% endblock %}
 {% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
-{% block page_title %}Overview{% endblock %}
-{% block page_subtitle %}Manage exam sessions, halls and system setup{% endblock %}
-
-{% block header_actions %}
-<a href="{% url 'setup_session' %}" class="isx-btn isx-btn--accent">
-    {% include "partials/icon.html" with name="plus" %} New session
-</a>
-{% endblock %}
+{% block page_title %}Exam periods{% endblock %}
+{% block page_subtitle %}Each exam period holds one roster, one hall catalog, and every exam session in that cycle{% endblock %}
 
 {% block content %}
 
 <div class="isx-grid isx-grid--4" style="margin-bottom:22px;">
     <div class="isx-stat">
-        <div class="isx-stat__label">Active sessions</div>
-        <div class="isx-stat__value">{{ stats.active_sessions }}</div>
+        <div class="isx-stat__label">Active periods</div>
+        <div class="isx-stat__value">{{ stats.active_periods }}</div>
     </div>
     <div class="isx-stat">
-        <div class="isx-stat__label">Students mapped</div>
+        <div class="isx-stat__label">Students on file</div>
         <div class="isx-stat__value">{{ stats.total_students }}</div>
     </div>
     <div class="isx-stat isx-stat--accent">
@@ -35,51 +29,55 @@
     <div class="isx-panel isx-panel--pad-0">
         <div class="isx-panel__head">
             <div>
-                <div class="isx-panel__title">Exam sessions</div>
-                <div class="isx-panel__hint">All sessions, most recent first</div>
+                <div class="isx-panel__title">Exam periods</div>
+                <div class="isx-panel__hint">Most recent first</div>
             </div>
         </div>
         <div class="isx-rows">
-            {% for session in sessions %}
-            <a href="{% url 'session_detail' session.id %}" class="isx-row" style="text-decoration:none; color:inherit;">
+            {% for period in periods %}
+            <a href="{% url 'period_detail' period.id %}" class="isx-row" style="text-decoration:none; color:inherit;">
                 <div>
-                    <div class="isx-row__title">{{ session.date }} · {{ session.shift }}</div>
-                    <div class="isx-row__meta">{{ session.halls.count }} halls · {{ session.student_count }} students · {{ session.pending_alert_count }} pending alert{{ session.pending_alert_count|pluralize }}</div>
+                    <div class="isx-row__title">{{ period.name }}</div>
+                    <div class="isx-row__meta">
+                        {{ period.student_count }} student{{ period.student_count|pluralize }} ·
+                        {{ period.hall_count }} hall{{ period.hall_count|pluralize }} ·
+                        {{ period.session_count }} exam{{ period.session_count|pluralize }}
+                    </div>
                 </div>
                 <div class="isx-row__side">
-                    {% if session.is_active %}
+                    {% if period.is_active %}
                         <span class="isx-tag isx-tag--success isx-tag--dot">Active</span>
                     {% else %}
-                        <span class="isx-tag isx-tag--neutral">Closed</span>
+                        <span class="isx-tag isx-tag--neutral">Archived</span>
                     {% endif %}
                     {% include "partials/icon.html" with name="arrow-right" %}
                 </div>
             </a>
             {% empty %}
             <div class="isx-empty">
-                <p>No exam sessions yet. Create your first one to get started.</p>
+                <p>No exam periods yet. Create your first one to get started.</p>
             </div>
             {% endfor %}
         </div>
     </div>
 
     <div class="isx-panel">
-        <div class="isx-panel__head">
-            <div class="isx-panel__title">Quick actions</div>
-        </div>
-        <div class="isx-panel__body" style="display:flex; flex-direction:column; gap:10px;">
-            <a href="{% url 'upload_mapping' %}" class="isx-btn isx-btn--ghost isx-btn--block" style="justify-content:flex-start;">
-                {% include "partials/icon.html" with name="upload" %} Upload student roster
-            </a>
-            <a href="{% url 'manage_users' %}" class="isx-btn isx-btn--ghost isx-btn--block" style="justify-content:flex-start;">
-                {% include "partials/icon.html" with name="user-plus" %} Create staff account
-            </a>
-            <a href="{% url 'control_room' %}" class="isx-btn isx-btn--ghost isx-btn--block" style="justify-content:flex-start;">
-                {% include "partials/icon.html" with name="satellite" %} Open live feed
-            </a>
-            <a href="{% url 'reports' %}" class="isx-btn isx-btn--ghost isx-btn--block" style="justify-content:flex-start;">
-                {% include "partials/icon.html" with name="file" %} Browse reports
-            </a>
+        <div class="isx-panel__head"><div class="isx-panel__title">New exam period</div></div>
+        <div class="isx-panel__body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. MCA / iMCA Semester 3, Aug 2026" required>
+                    <p class="isx-field__hint">
+                        One roster and one hall catalog will be shared by every exam
+                        you schedule inside this period.
+                    </p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="plus" %} Create period
+                </button>
+            </form>
         </div>
     </div>
 </div>

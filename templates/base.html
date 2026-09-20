@@ -26,13 +26,7 @@
             <nav class="isx-nav" id="isx-nav">
                 {% if user.role == 'ADMIN' %}
                     <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}is-active{% endif %}">
-                        {% include "partials/icon.html" with name="dashboard" %} Overview
-                    </a>
-                    <a href="{% url 'setup_session' %}" class="{% if request.resolver_match.url_name == 'setup_session' %}is-active{% endif %}">
-                        {% include "partials/icon.html" with name="calendar" %} Setup Exam
-                    </a>
-                    <a href="{% url 'upload_mapping' %}" class="{% if request.resolver_match.url_name == 'upload_mapping' %}is-active{% endif %}">
-                        {% include "partials/icon.html" with name="upload" %} Upload Roster
+                        {% include "partials/icon.html" with name="dashboard" %} Exam Periods
                     </a>
                     <a href="{% url 'manage_users' %}" class="{% if request.resolver_match.url_name == 'manage_users' %}is-active{% endif %}">
                         {% include "partials/icon.html" with name="users" %} Staff

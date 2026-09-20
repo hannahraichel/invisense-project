@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Upload Timetable — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">{{ period.name }}</span>{% endblock %}
+{% block page_title %}Upload timetable{% endblock %}
+{% block page_subtitle %}Each row becomes one exam session — halls and seating are assigned per session afterwards{% endblock %}
+
+{% block content %}
+<div class="isx-split">
+    <div class="isx-panel">
+        <div class="isx-panel__body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="timetable_file">CSV file</label>
+                    <input type="file" id="timetable_file" name="timetable_file" accept=".csv" required>
+                    <p class="isx-field__hint">Requires: subject, exam_date, start_time, end_time.</p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="upload" %} Upload timetable
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">CSV format</div></div>
+        <div class="isx-panel__body">
+            <table class="isx-table">
+                <tr><th>subject</th><th>exam_date</th><th>shift</th><th>start_time</th><th>end_time</th></tr>
+                <tr><td>MCA</td><td>2026-09-15</td><td>Morning</td><td>09:30</td><td>11:30</td></tr>
+                <tr><td>iMCA</td><td>2026-09-15</td><td>Morning</td><td>09:30</td><td>12:30</td></tr>
+            </table>
+            <p class="isx-small isx-muted" style="margin-top:14px;">
+                Dates must be <code>YYYY-MM-DD</code> and times <code>HH:MM</code> in 24-hour
+                format (09:30, 13:30). Two subjects can run the same morning with different
+                timings, like the MCA/iMCA example above — each becomes its own exam session.
+                <code>shift</code> is optional, just a label.
+            </p>
+            <p class="isx-small isx-muted" style="margin-top:10px;">
+                After this, open each exam session to select its halls, assign invigilators,
+                and auto-assign students — a row on the timetable doesn't seat anyone by itself.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

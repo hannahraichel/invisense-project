@@ -7,12 +7,12 @@
 {% block content %}
 <div class="isx-panel" style="max-width: 560px;">
     <div class="isx-panel__body">
-        {% if active_hall %}
+        {% if current %}
         <form method="POST">
             {% csrf_token %}
             <div class="isx-field">
-                <label>Hall</label>
-                <input type="text" value="Hall {{ active_hall.hall_number }}" disabled>
+                <label>Exam &amp; hall</label>
+                <input type="text" value="{{ current.exam_session.subject }} — Hall {{ current.hall.hall_number }}" disabled>
             </div>
 
             <div class="isx-field">
@@ -27,7 +27,7 @@
             {% if student %}
             <div class="isx-flash__item" style="border-left-color: var(--warning); margin-bottom: 20px;">
                 {% include "partials/icon.html" with name="flag" %}
-                Flagged student: <strong>{{ student.roll_number }}</strong> (Row {{ student.row }}, Seat {{ student.seat }})
+                Flagged student: <strong>{{ student.roll_number }}</strong>
                 <input type="hidden" name="student_id" value="{{ student.id }}">
             </div>
             {% else %}
@@ -35,15 +35,15 @@
                 <label for="student_id">Flag a scanned student (optional)</label>
                 <select name="student_id" id="student_id" onchange="toggleManualLocation()">
                     <option value="">— General location (enter row/seat manually below) —</option>
-                    {% for s in scanned_students %}
-                    <option value="{{ s.id }}">Row {{ s.row }}, Seat {{ s.seat }} — {{ s.name|default:s.roll_number }} ({{ s.roll_number }})</option>
+                    {% for a in scanned_students %}
+                    <option value="{{ a.student.id }}">Row {{ a.row }}, Seat {{ a.seat }} — {{ a.student.name|default:a.student.roll_number }} ({{ a.student.roll_number }})</option>
                     {% endfor %}
                 </select>
                 <p class="isx-field__hint">
                     {% if scanned_students %}
-                        Only students already checked in this hall appear here.
+                        Only students already checked in for this exam appear here.
                     {% else %}
-                        No one has been scanned in this hall yet — use the fields below instead.
+                        No one has been scanned yet — use the fields below instead.
                     {% endif %}
                 </p>
             </div>
@@ -71,7 +71,7 @@
         </form>
         {% else %}
         <div class="isx-empty">
-            <p>You have no active hall assignment, so alerts can't be raised right now.</p>
+            <p>You have no active exam right now, so alerts can't be raised.</p>
         </div>
         {% endif %}
     </div>

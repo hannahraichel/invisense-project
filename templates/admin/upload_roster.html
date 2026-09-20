@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Upload Roster — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">{{ period.name }}</span>{% endblock %}
+{% block page_title %}Upload student roster{% endblock %}
+{% block page_subtitle %}Uploaded once for the whole exam period — issues each student's one permanent QR{% endblock %}
+
+{% block content %}
+<div class="isx-split">
+    <div class="isx-panel">
+        <div class="isx-panel__body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="roster_file">CSV file</label>
+                    <input type="file" id="roster_file" name="roster_file" accept=".csv" required>
+                    <p class="isx-field__hint">Only <code>roll_number</code> is required.</p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="upload" %} Upload roster
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">CSV format</div></div>
+        <div class="isx-panel__body">
+            <table class="isx-table">
+                <tr><th>roll_number</th><th>name</th><th>course</th></tr>
+                <tr><td>21CS045</td><td>A. Menon</td><td>MCA</td></tr>
+                <tr><td>21CS046</td><td>R. Kumar</td><td>iMCA</td></tr>
+            </table>
+            <p class="isx-small isx-muted" style="margin-top:14px;">
+                Each new roll number gets exactly one hall ticket with one QR — the same
+                QR is reused for every exam in this period, so this roster only needs
+                uploading once, not per exam. Roll numbers already on this roster are
+                skipped, nothing is overwritten.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

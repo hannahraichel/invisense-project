@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}{{ period.name }} — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Exam Period</span>{% endblock %}
+{% block page_title %}{{ period.name }}{% endblock %}
+{% block page_subtitle %}
+    {{ period.student_count }} student{{ period.student_count|pluralize }} on the roster ·
+    {{ period.hall_count }} hall{{ period.hall_count|pluralize }} ·
+    {{ period.session_count }} exam{{ period.session_count|pluralize }} scheduled
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'upload_roster' period.id %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="upload" %} Upload roster
+</a>
+<a href="{% url 'upload_timetable' period.id %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="calendar" %} Upload timetable
+</a>
+<a href="{% url 'download_hall_tickets' period.id %}" class="isx-btn isx-btn--accent">
+    {% include "partials/icon.html" with name="download" %} Hall tickets (PDF)
+</a>
+{% endblock %}
+
+{% block content %}
+
+{% if period.student_count == 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body">
+        <strong>Start here:</strong> upload the student roster first (roll number, name, course) —
+        this issues every student's one permanent hall-ticket QR. Then upload the timetable to
+        create each exam session.
+    </div>
+</div>
+{% elif period.session_count == 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body">
+        <strong>Roster loaded.</strong> Now upload the timetable (subject, date, start/end time) —
+        each row becomes an exam session you can assign halls and students to.
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-split">
+    <div class="isx-panel isx-panel--pad-0">
+        <div class="isx-panel__head">
+            <div>
+                <div class="isx-panel__title">Exam sessions</div>
+                <div class="isx-panel__hint">One per subject/date — halls and seating are assigned individually</div>
+            </div>
+        </div>
+        <div class="isx-rows">
+            {% for session in exam_sessions %}
+            <a href="{% url 'exam_session_detail' session.id %}" class="isx-row" style="text-decoration:none; color:inherit;">
+                <div>
+                    <div class="isx-row__title">{{ session.subject }} — {{ session.exam_date }}</div>
+                    <div class="isx-row__meta">
+                        {{ session.start_time|time:"g:i A" }}–{{ session.end_time|time:"g:i A" }} ·
+                        {{ session.exam_halls.count }} hall{{ session.exam_halls.count|pluralize }} ·
+                        {{ session.assigned_count }} assigned ·
+                        {{ session.present_count }} checked in
+                    </div>
+                </div>
+                <div class="isx-row__side">
+                    {% if session.status == 'CANCELLED' %}
+                        <span class="isx-tag isx-tag--danger">Cancelled</span>
+                    {% elif session.seating_confirmed %}
+                        <span class="isx-tag isx-tag--success isx-tag--dot">Confirmed</span>
+                    {% else %}
+                        <span class="isx-tag isx-tag--neutral">Draft</span>
+                    {% endif %}
+                    {% include "partials/icon.html" with name="arrow-right" %}
+                </div>
+            </a>
+            {% empty %}
+            <div class="isx-empty"><p>No exam sessions yet — upload the timetable to create them.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="isx-panel isx-panel--pad-0">
+        <div class="isx-panel__head">
+            <div>
+                <div class="isx-panel__title">Hall catalog</div>
+                <div class="isx-panel__hint">Reusable across every exam in this period</div>
+            </div>
+        </div>
+        <div class="isx-rows">
+            {% for hall in halls %}
+            <div class="isx-row">
+                <div>
+                    <div class="isx-row__title">Hall {{ hall.hall_number }}</div>
+                    <div class="isx-row__meta">{{ hall.capacity }} seats</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="isx-empty"><p>No halls yet — add one below.</p></div>
+            {% endfor %}
+        </div>
+        <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="isx-field-row">
+                    <div class="isx-field isx-mb-0">
+                        <input type="text" name="hall_number" placeholder="Hall number, e.g. CLC 306" required>
+                    </div>
+                    <div class="isx-field isx-mb-0" style="max-width:110px;">
+                        <input type="text" name="capacity" placeholder="Seats" value="30" required>
+                    </div>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" style="margin-top:10px;">
+                    {% include "partials/icon.html" with name="plus" %} Add hall
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
