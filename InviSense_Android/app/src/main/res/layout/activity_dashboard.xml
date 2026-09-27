@@ -6,19 +6,19 @@
     android:orientation="vertical"
     android:background="@color/background">
 
-    <!-- Topbar -->
+    <!-- Premium Clean Top App Bar -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/surface"
-        android:elevation="2dp"
+        android:elevation="3dp"
         app:title="InviSense"
         app:titleTextColor="@color/text_primary"
-        app:subtitle="Invigilator Dashboard"
+        app:subtitle="Invigilator Portal"
         app:subtitleTextColor="@color/text_secondary" />
 
-    <!-- Thin divider -->
+    <!-- Thin structural divider -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
@@ -31,13 +31,79 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="16dp">
+
+                <!-- ── TEACHER PROFILE WELCOME HEADER ── -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="1dp"
+                    app:cardBackgroundColor="@color/surface">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="16dp">
+
+                        <!-- Avatar icon badge -->
+                        <TextView
+                            android:id="@+id/tvAvatarBadge"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_circle_avatar"
+                            android:textColor="@color/on_primary"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:gravity="center"
+                            android:text="IN"
+                            android:layout_marginEnd="14dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="SIGNED IN INVIGILATOR"
+                                android:textSize="10.5sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/muted"
+                                android:letterSpacing="0.08" />
+
+                            <TextView
+                                android:id="@+id/tvTeacherName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Invigilator"
+                                android:textSize="17sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"
+                                android:layout_marginTop="2dp" />
+
+                            <TextView
+                                android:id="@+id/tvTeacherRole"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Official Examination Duty"
+                                android:textSize="12.5sp"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
 
                 <ProgressBar
                     android:id="@+id/progressBar"
@@ -46,7 +112,7 @@
                     android:layout_gravity="center"
                     android:visibility="gone" />
 
-                <!-- ── ACTIVE EXAM PANEL ── -->
+                <!-- ── CURRENT / RECENT EXAM CARD ── -->
                 <LinearLayout
                     android:id="@+id/layoutExam"
                     android:layout_width="match_parent"
@@ -54,7 +120,6 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <!-- Exam info card -->
                     <androidx.cardview.widget.CardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -74,10 +139,10 @@
                                 android:id="@+id/tvStatus"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textSize="13sp"
+                                android:textSize="12.5sp"
                                 android:textStyle="bold"
                                 android:paddingHorizontal="10dp"
-                                android:paddingVertical="4dp"
+                                android:paddingVertical="5dp"
                                 android:background="@color/surface_variant"
                                 android:textColor="@color/text_primary"
                                 android:layout_marginBottom="12dp" />
@@ -119,11 +184,11 @@
                                 android:id="@+id/tvScanWindow"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:padding="10dp"
+                                android:padding="12dp"
                                 android:background="@color/warning_bg"
                                 android:textColor="@color/warning"
-                                android:textSize="12.5sp"
-                                android:layout_marginTop="10dp"
+                                android:textSize="13sp"
+                                android:layout_marginTop="12dp"
                                 android:visibility="gone" />
                         </LinearLayout>
                     </androidx.cardview.widget.CardView>
@@ -141,7 +206,7 @@
                         app:backgroundTint="@color/primary"
                         android:layout_marginBottom="10dp" />
 
-                    <!-- Secondary Action: View Roster -->
+                    <!-- Secondary Action: View Roster (ALWAYS available) -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnRoster"
                         android:layout_width="match_parent"
@@ -178,34 +243,75 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="32dp"
+                    android:padding="28dp"
                     android:visibility="gone">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="No Active Exam"
-                        android:textSize="20sp"
+                        android:text="No Exams In Session"
+                        android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp" />
+                        android:layout_marginBottom="6dp" />
 
                     <TextView
                         android:id="@+id/tvNoExamMsg"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="14sp"
+                        android:textSize="13.5sp"
                         android:textColor="@color/text_secondary"
                         android:gravity="center"
-                        android:text="Scanning opens automatically\n3 hours before your assigned exam." />
+                        android:text="No active exam session right now." />
                 </LinearLayout>
+
+                <!-- ── UPCOMING SCHEDULE (Tomorrow / Later) ── -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cardUpcomingExams"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/surface"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Upcoming Assigned Exams"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Your scheduled invigilation sessions"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginTop="2dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <LinearLayout
+                            android:id="@+id/layoutUpcomingList"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
 
                 <!-- ── MY FLAGGED INCIDENTS HISTORY ── -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/cardAlertHistory"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
                     android:layout_marginBottom="16dp"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="2dp"
@@ -228,7 +334,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Incidents you reported during this session"
+                            android:text="Incidents you reported to the control room"
                             android:textSize="12sp"
                             android:textColor="@color/text_secondary"
                             android:layout_marginTop="2dp"

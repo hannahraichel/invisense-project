@@ -179,7 +179,23 @@ def api_invigilator_dashboard(request):
             'display_status': session.display_status,
         }
 
-    # Upcoming exams
+    # Check if there is an active exam right now
+    active_eh = current
+
+    # Find the most recently ended exam for this invigilator (ended today or previously)
+    past_candidates = ExamHall.objects.filter(
+        invigilator=user,
+        exam_session__status__in=ExamSession.LIVE_STATUSES,
+        exam_session__exam_date__lte=now.date(),
+    ).select_related('exam_session', 'hall').order_by('-exam_session__exam_date', '-exam_session__end_time')
+
+    most_recent_ended = None
+    for peh in past_candidates:
+        if peh.exam_session.has_passed(now):
+            most_recent_ended = peh
+            break
+
+    # Upcoming exams (strictly in the future)
     upcoming_candidates = ExamHall.objects.filter(
         invigilator=user,
         exam_session__status__in=ExamSession.LIVE_STATUSES,
@@ -187,10 +203,14 @@ def api_invigilator_dashboard(request):
     ).select_related('exam_session', 'hall').order_by('exam_session__exam_date', 'exam_session__start_time')
 
     upcoming_list = []
+    future_candidates = []
     for eh in upcoming_candidates:
         s = eh.exam_session
-        if current and eh.id == current.id:
+        if active_eh and eh.id == active_eh.id:
             continue
+        if s.has_passed(now):
+            continue
+        future_candidates.append(eh)
         scan_dt = s.scan_window_start_dt()
         is_open = s.is_currently_active(now)
         upcoming_list.append({
@@ -218,19 +238,26 @@ def api_invigilator_dashboard(request):
             'display_status': s.display_status,
         })
 
-    # Prepare response for Android app (DashboardResponse)
-    target_exam = current or upcoming_candidates.first()
+    # Prepare response for Android app
+    # Priority for display target:
+    # 1. Currently active exam
+    # 2. Upcoming exam (future)
+    # 3. Most recently ended exam
+    target_exam = active_eh or (future_candidates[0] if future_candidates else most_recent_ended)
     has_active_exam = False
     scan_open = False
+    is_ended = False
     exam_payload = None
     msg = "No exam assigned right now."
 
     if target_exam:
-        has_active_exam = True
         s = target_exam.exam_session
         h = target_exam.hall
         scan_dt = s.scan_window_start_dt()
         is_open = s.is_currently_active(now)
+        is_ended = s.has_passed(now)
+
+        has_active_exam = is_open
         scan_open = is_open
 
         exam_payload = {
@@ -242,9 +269,14 @@ def api_invigilator_dashboard(request):
             'scan_opens_at': scan_dt.strftime('%I:%M %p'),
             'present_count': target_exam.present_count,
             'total_assigned': target_exam.assigned_count,
+            'is_ended': is_ended,
+            'is_scanning_open': is_open,
         }
+
         if is_open:
             msg = "Scanning is OPEN"
+        elif is_ended:
+            msg = "Exam has ended. Scanning and alert raising are closed."
         else:
             msg = f"Scanning opens at {scan_dt.strftime('%I:%M %p')} (3 hours before start)"
 
@@ -300,22 +332,39 @@ def api_invigilator_roster(request):
     Returns student roster for the current active exam hall.
     """
     user = request.api_user
-    current = get_current_invigilator_context(user)
-    if not current:
+    now = timezone.localtime()
+    target_eh = get_current_invigilator_context(user)
+
+    if not target_eh:
+        # Check if caller specified a specific exam_hall_id or exam_session_id
+        session_id = request.GET.get('exam_session_id')
+        if session_id:
+            target_eh = ExamHall.objects.filter(
+                invigilator=user, exam_session_id=session_id
+            ).select_related('exam_session', 'hall').first()
+
+    if not target_eh:
+        # Fallback to the most recent exam (whether past or future) so teacher can always review their roster
+        target_eh = ExamHall.objects.filter(
+            invigilator=user,
+            exam_session__status__in=ExamSession.LIVE_STATUSES,
+        ).select_related('exam_session', 'hall').order_by('-exam_session__exam_date', '-exam_session__start_time').first()
+
+    if not target_eh:
         return JsonResponse({
             'status': 'no_active_exam',
-            'message': 'No exam session is currently active for you. Scanning opens 3 hours before start time.',
+            'message': 'No exam roster assigned to your account.',
             'students': [],
             'present_count': 0,
             'total_count': 0,
         })
 
     assignments = ExamStudentAssignment.objects.filter(
-        exam_session=current.exam_session, hall=current.hall
+        exam_session=target_eh.exam_session, hall=target_eh.hall
     ).select_related('student').order_by('row', 'seat', 'student__roll_number')
 
     attendance_map = dict(
-        Attendance.objects.filter(exam_session=current.exam_session, hall=current.hall)
+        Attendance.objects.filter(exam_session=target_eh.exam_session, hall=target_eh.hall)
         .values_list('student_id', 'scanned_at')
     )
 
@@ -336,11 +385,12 @@ def api_invigilator_roster(request):
     return JsonResponse({
         'status': 'success',
         'exam_info': {
-            'subject': current.exam_session.subject,
-            'hall_name': current.hall.name,
-            'exam_date': current.exam_session.exam_date.isoformat(),
-            'start_time': current.exam_session.start_time.strftime('%I:%M %p'),
-            'end_time': current.exam_session.end_time.strftime('%I:%M %p'),
+            'subject': target_eh.exam_session.subject,
+            'hall_name': target_eh.hall.name,
+            'exam_date': target_eh.exam_session.exam_date.isoformat(),
+            'start_time': target_eh.exam_session.start_time.strftime('%I:%M %p'),
+            'end_time': target_eh.exam_session.end_time.strftime('%I:%M %p'),
+            'is_ended': target_eh.exam_session.has_passed(now),
         },
         'students': students,
         'present_count': len(attendance_map),
@@ -479,9 +529,22 @@ def api_invigilator_raise_alert(request):
     user = request.api_user
     current = get_current_invigilator_context(user)
     if not current:
+        now = timezone.localtime()
+        # Check if they had an exam today that ended
+        past = ExamHall.objects.filter(
+            invigilator=user,
+            exam_session__status__in=ExamSession.LIVE_STATUSES,
+            exam_session__exam_date__lte=now.date(),
+        ).select_related('exam_session').order_by('-exam_session__exam_date', '-exam_session__end_time').first()
+
+        if past and past.exam_session.has_passed(now):
+            msg = 'You cannot raise an alert after the exam has ended.'
+        else:
+            msg = 'You cannot raise an alert: you have no active exam session right now.'
+
         return JsonResponse({
             'status': 'error',
-            'message': 'Cannot raise alert: you have no active exam session right now.'
+            'message': msg
         }, status=400)
 
     try:
