@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: invisense
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn invisense.wsgi:application"
+    plan: free
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: TIME_ZONE
+        value: "Asia/Kolkata"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
