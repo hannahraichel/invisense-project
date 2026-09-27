@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Staff — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
+{% block page_title %}Staff accounts{% endblock %}
+{% block page_subtitle %}Create and manage invigilator and control-room logins{% endblock %}
+
+{% block content %}
+<div class="isx-split">
+    <div class="isx-panel isx-panel--pad-0">
+        <div class="isx-panel__head">
+            <div class="isx-panel__title">All staff</div>
+        </div>
+        <div class="isx-rows">
+            {% for u in staff_users %}
+            <div class="isx-row">
+                <div>
+                    <div class="isx-row__title">{{ u.username }}{% if u.first_name %} · {{ u.first_name }}{% endif %}</div>
+                    <div class="isx-row__meta">{{ u.get_role_display }}</div>
+                </div>
+                <div class="isx-row__side">
+                    {% if u.is_active %}
+                        <span class="isx-tag isx-tag--success isx-tag--dot">Active</span>
+                    {% else %}
+                        <span class="isx-tag isx-tag--neutral">Disabled</span>
+                    {% endif %}
+                    <form method="POST" action="{% url 'toggle_user_active' u.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">
+                            {% if u.is_active %}Disable{% else %}Enable{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="isx-empty"><p>No staff accounts yet. Create the first one.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">New staff account</div></div>
+        <div class="isx-panel__body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="isx-field">
+                    <label for="first_name">Display name (optional)</label>
+                    <input type="text" id="first_name" name="first_name">
+                </div>
+                <div class="isx-field">
+                    <label for="password">Temporary password</label>
+                    <input type="text" id="password" name="password" required>
+                    <p class="isx-field__hint">Share this with the staff member — they can change it later.</p>
+                </div>
+                <div class="isx-field">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        {% for code, label in role_choices %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="user-plus" %} Create account
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

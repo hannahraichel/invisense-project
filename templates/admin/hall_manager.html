@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Sections — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
+{% block page_title %}Section / hall manager{% endblock %}
+{% block page_subtitle %}Physical rooms, shared across every exam period — MCA and IMCA exams can both use the same room{% endblock %}
+
+{% block content %}
+<div class="isx-split">
+    <div class="isx-panel isx-panel--pad-0">
+        <div class="isx-panel__head">
+            <div class="isx-panel__title">All sections</div>
+        </div>
+        <div class="isx-rows">
+            {% for hall in halls %}
+            <div class="isx-row" style="align-items:flex-start;">
+                <form method="POST" action="{% url 'edit_hall' hall.id %}" style="display:flex; gap:10px; align-items:center; flex:1; flex-wrap:wrap;">
+                    {% csrf_token %}
+                    <input type="text" name="name" value="{{ hall.name }}" style="width:140px; padding:8px 10px; border:1px solid var(--line-strong); border-radius:3px; font-size:13.5px; font-weight:600;">
+                    <input type="text" name="capacity" value="{{ hall.capacity }}" style="width:70px; padding:8px 10px; border:1px solid var(--line-strong); border-radius:3px; font-size:13.5px;">
+                    <span class="isx-small isx-muted">seats</span>
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">Save</button>
+                </form>
+                <div class="isx-row__side">
+                    {% if hall.status == 'STOPPED' %}
+                        <span class="isx-tag isx-tag--neutral">Stopped</span>
+                    {% else %}
+                        <span class="isx-tag isx-tag--success isx-tag--dot">Active</span>
+                    {% endif %}
+                    <form method="POST" action="{% url 'stop_hall' hall.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">{% if hall.status == 'STOPPED' %}Reactivate{% else %}Stop{% endif %}</button>
+                    </form>
+                    <form method="POST" action="{% url 'delete_hall' hall.id %}" onsubmit="return confirm('Delete {{ hall.name }}? Only works if it has no exam history.');">
+                        {% csrf_token %}
+                        <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" style="color:var(--danger);">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="isx-empty"><p>No sections yet — add the first one.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">New section</div></div>
+        <div class="isx-panel__body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. CLC 306" required>
+                    <p class="isx-field__hint">Displayed exactly as typed — never auto-prefixed.</p>
+                </div>
+                <div class="isx-field">
+                    <label for="capacity">Capacity</label>
+                    <input type="text" id="capacity" name="capacity" value="30" required>
+                </div>
+                <div class="isx-field">
+                    <label for="seats_per_row">Seats per row</label>
+                    <input type="text" id="seats_per_row" name="seats_per_row" value="6">
+                    <p class="isx-field__hint">Only used to label rows/seats when auto-assigning.</p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="plus" %} Add section
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

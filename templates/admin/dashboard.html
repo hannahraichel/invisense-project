@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Exam Periods — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
+{% block page_title %}Exam periods{% endblock %}
+{% block page_subtitle %}Each exam period holds one roster and its own timetable — sections are shared globally across all periods{% endblock %}
+
+{% block content %}
+
+<div class="isx-grid isx-grid--4" style="margin-bottom:22px;">
+    <div class="isx-stat">
+        <div class="isx-stat__label">Active periods</div>
+        <div class="isx-stat__value">{{ stats.active_periods }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Students on file</div>
+        <div class="isx-stat__value">{{ stats.total_students }}</div>
+    </div>
+    <div class="isx-stat isx-stat--accent">
+        <div class="isx-stat__label">Pending alerts</div>
+        <div class="isx-stat__value">{{ stats.pending_alerts }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Invigilators on file</div>
+        <div class="isx-stat__value">{{ stats.total_invigilators }}</div>
+    </div>
+</div>
+
+<div class="isx-split">
+    <div class="isx-panel isx-panel--pad-0">
+        <div class="isx-panel__head">
+            <div>
+                <div class="isx-panel__title">Exam periods</div>
+                <div class="isx-panel__hint">Most recent first</div>
+            </div>
+        </div>
+        <div class="isx-rows">
+            {% for period in periods %}
+            <a href="{% url 'period_detail' period.id %}" class="isx-row" style="text-decoration:none; color:inherit;">
+                <div>
+                    <div class="isx-row__title">{{ period.name }}</div>
+                    <div class="isx-row__meta">
+                        {{ period.student_count }} student{{ period.student_count|pluralize }} ·
+                        {{ period.session_count }} exam{{ period.session_count|pluralize }}
+                    </div>
+                </div>
+                <div class="isx-row__side">
+                    {% if period.status == 'ACTIVE' %}
+                        <span class="isx-tag isx-tag--success isx-tag--dot">Active</span>
+                    {% elif period.status == 'STOPPED' %}
+                        <span class="isx-tag isx-tag--neutral">Stopped</span>
+                    {% else %}
+                        <span class="isx-tag isx-tag--neutral">Archived</span>
+                    {% endif %}
+                    {% include "partials/icon.html" with name="arrow-right" %}
+                </div>
+            </a>
+            {% empty %}
+            <div class="isx-empty">
+                <p>No exam periods yet. Create your first one to get started.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">New exam period</div></div>
+        <div class="isx-panel__body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" placeholder="e.g. MCA / iMCA Semester 3, Aug 2026" required>
+                    <p class="isx-field__hint">
+                        One roster and timetable, scoped to this period. Sections/halls are
+                        shared globally — set those up under "Sections" in the top nav.
+                    </p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="plus" %} Create period
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

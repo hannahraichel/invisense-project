@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}{{ period.name }} — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Exam Period</span>{% endblock %}
+{% block page_title %}
+    {{ period.name }}
+    {% if period.status == 'STOPPED' %}<span class="isx-tag isx-tag--neutral" style="vertical-align:middle; margin-left:8px;">Stopped</span>{% endif %}
+    {% if period.status == 'ARCHIVED' %}<span class="isx-tag isx-tag--neutral" style="vertical-align:middle; margin-left:8px;">Archived</span>{% endif %}
+{% endblock %}
+{% block page_subtitle %}
+    {{ student_count }} student{{ student_count|pluralize }} on the roster ·
+    {{ exam_sessions.count }} exam{{ exam_sessions.count|pluralize }} scheduled ·
+    {{ ready_count }} hall ticket{{ ready_count|pluralize }} ready
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'upload_roster' period.id %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="upload" %} Upload roster
+</a>
+<a href="{% url 'upload_timetable' period.id %}" class="isx-btn isx-btn--ghost">
+    {% include "partials/icon.html" with name="calendar" %} Upload timetable
+</a>
+<a href="{% url 'download_hall_tickets' period.id %}" class="isx-btn isx-btn--accent" {% if ready_count == 0 %}style="pointer-events:none; opacity:0.4;"{% endif %}>
+    {% include "partials/icon.html" with name="download" %} Hall tickets (PDF)
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex; gap:10px; margin-bottom:22px;">
+    <form method="POST" action="{% url 'stop_period' period.id %}">
+        {% csrf_token %}
+        <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% if period.status == 'STOPPED' %}Reactivate period{% else %}Stop period{% endif %}
+        </button>
+    </form>
+    <button type="button" class="isx-btn isx-btn--ghost isx-btn--sm" onclick="document.getElementById('edit-period-form').style.display='flex'">Edit name</button>
+    <form method="POST" action="{% url 'delete_period' period.id %}" onsubmit="return confirm('Delete this entire exam period? This only works if it has no exam history.');">
+        {% csrf_token %}
+        <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" style="color:var(--danger); border-color:var(--danger);">Delete</button>
+    </form>
+</div>
+
+<form id="edit-period-form" method="POST" action="{% url 'edit_period' period.id %}" style="display:none; gap:10px; margin-bottom:22px;">
+    {% csrf_token %}
+    <input type="text" name="name" value="{{ period.name }}" style="flex:1; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px;">
+    <button type="submit" class="isx-btn isx-btn--accent isx-btn--sm">Save</button>
+</form>
+
+{% if student_count == 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body">
+        <strong>Start here:</strong> upload the student roster first (roll number, name, course) —
+        this issues every student's one permanent hall-ticket QR. Then upload the timetable.
+    </div>
+</div>
+{% elif exam_sessions.count == 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body">
+        <strong>Roster loaded.</strong> Now upload the timetable — each valid row becomes an
+        exam session you can assign sections and students to. Sections themselves are managed
+        globally under <a href="{% url 'hall_manager' %}" style="color:var(--accent-ink); font-weight:600;">Sections</a>.
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Exam sessions</div>
+            <div class="isx-panel__hint">One per subject/date — sections and seating are assigned individually</div>
+        </div>
+    </div>
+    <div class="isx-rows">
+        {% for session in exam_sessions %}
+        <a href="{% url 'exam_session_detail' session.id %}" class="isx-row" style="text-decoration:none; color:inherit;">
+            <div>
+                <div class="isx-row__title">{{ session.subject }} — {{ session.exam_date }}</div>
+                <div class="isx-row__meta">
+                    {{ session.start_time|time:"g:i A" }}–{{ session.end_time|time:"g:i A" }} ·
+                    {{ session.exam_halls.count }} section{{ session.exam_halls.count|pluralize }} ·
+                    {{ session.assigned_count }} assigned ·
+                    {{ session.present_count }} checked in
+                </div>
+            </div>
+            <div class="isx-row__side">
+                {% if session.status == 'CANCELLED' %}
+                    <span class="isx-tag isx-tag--danger">Cancelled</span>
+                {% elif session.status == 'STOPPED' %}
+                    <span class="isx-tag isx-tag--neutral">Stopped</span>
+                {% elif session.status == 'READY' %}
+                    <span class="isx-tag isx-tag--success isx-tag--dot">Ready</span>
+                {% else %}
+                    <span class="isx-tag isx-tag--neutral">{{ session.display_status }}</span>
+                {% endif %}
+                {% include "partials/icon.html" with name="arrow-right" %}
+            </div>
+        </a>
+        {% empty %}
+        <div class="isx-empty"><p>No exam sessions yet — upload the timetable to create them.</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Student roster</div>
+            <div class="isx-panel__hint">Hall ticket unlocks once every exam session below has a confirmed seat</div>
+        </div>
+    </div>
+    <div class="isx-rows">
+        {% for s in students %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">{{ s.roll_number }}{% if s.name %} — {{ s.name }}{% endif %}</div>
+                <div class="isx-row__meta">{{ s.course|default:"—" }}</div>
+            </div>
+            <div class="isx-row__side">
+                {% if not s.is_active %}
+                    <span class="isx-tag isx-tag--neutral">Deactivated</span>
+                {% elif s.is_hall_ticket_ready %}
+                    <span class="isx-tag isx-tag--success isx-tag--dot">Ticket ready</span>
+                {% else %}
+                    <span class="isx-tag isx-tag--warning">Pending</span>
+                {% endif %}
+                <form method="POST" action="{% url 'toggle_student_active' s.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">{% if s.is_active %}Deactivate{% else %}Reactivate{% endif %}</button>
+                </form>
+                <form method="POST" action="{% url 'delete_student' s.id %}" onsubmit="return confirm('Delete {{ s.roll_number }}? Only works if they have no exam history.');">
+                    {% csrf_token %}
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" style="color:var(--danger);">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No students on this roster yet — upload a CSV above, or add one below.</p></div>
+        {% endfor %}
+    </div>
+    <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+        <form method="POST" action="{% url 'add_student' period.id %}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="text" name="roll_number" placeholder="Roll number" required style="flex:1; min-width:120px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px;">
+            <input type="text" name="name" placeholder="Name" style="flex:1; min-width:140px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px;">
+            <input type="text" name="course" placeholder="Course, e.g. MCA" style="width:140px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px;">
+            <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">
+                {% include "partials/icon.html" with name="plus" %} Add student
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

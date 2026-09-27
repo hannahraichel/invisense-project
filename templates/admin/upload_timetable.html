@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Upload Timetable — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">{{ period.name }}</span>{% endblock %}
+{% block page_title %}Upload timetable{% endblock %}
+{% block page_subtitle %}Each valid row becomes one exam session — sections and seating are assigned per session afterwards{% endblock %}
+
+{% block content %}
+
+{% if report %}
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div class="isx-panel__head"><div class="isx-panel__title">Timetable processing result</div></div>
+    <div class="isx-rows">
+        {% for row_number, subject, outcome, reason in report %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">Row {{ row_number }} — {{ subject }}</div>
+                {% if reason %}<div class="isx-row__meta">{{ reason }}</div>{% endif %}
+            </div>
+            <div class="isx-row__side">
+                {% if outcome == 'created' %}
+                    <span class="isx-tag isx-tag--success">Created ✓</span>
+                {% else %}
+                    <span class="isx-tag isx-tag--danger">Rejected ✗</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-split">
+    <div class="isx-panel">
+        <div class="isx-panel__body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="timetable_file">CSV file</label>
+                    <input type="file" id="timetable_file" name="timetable_file" accept=".csv" required>
+                    <p class="isx-field__hint">Requires: subject, exam_date, start_time, end_time.</p>
+                </div>
+                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
+                    {% include "partials/icon.html" with name="upload" %} Upload timetable
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="isx-panel">
+        <div class="isx-panel__head"><div class="isx-panel__title">CSV format</div></div>
+        <div class="isx-panel__body">
+            <table class="isx-table">
+                <tr><th>subject</th><th>exam_date</th><th>start_time</th><th>end_time</th></tr>
+                <tr><td>DBMS</td><td>2026-09-15</td><td>10:00</td><td>12:00</td></tr>
+                <tr><td>Python</td><td>2026-09-15</td><td>14:00</td><td>16:00</td></tr>
+            </table>
+            <p class="isx-small isx-muted" style="margin-top:14px;">
+                Dates must be <code>YYYY-MM-DD</code> and times <code>HH:MM</code> in 24-hour
+                format. Any row whose exam date/time has already passed is rejected — it will
+                never silently create a usable exam session — and every row is reported
+                individually above after upload.
+            </p>
+            <p class="isx-small isx-muted" style="margin-top:10px;">
+                After this, open each exam session to select its sections, assign invigilators,
+                and auto-assign students — a timetable row doesn't seat anyone by itself.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

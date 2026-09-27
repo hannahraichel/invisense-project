@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Live Feed — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Control room</span>{% endblock %}
+{% block page_title %}Live incident feed{% endblock %}
+{% block page_subtitle %}Real-time monitoring across every active hall{% endblock %}
+
+{% block header_actions %}
+<span class="isx-tag isx-tag--neutral" id="refresh-indicator">Refreshing in <span id="refresh-count">5</span>s</span>
+{% endblock %}
+
+{% block content %}
+
+<div class="isx-grid isx-grid--3" style="margin-bottom:22px;">
+    <div class="isx-stat">
+        <div class="isx-stat__label">Pending</div>
+        <div class="isx-stat__value" style="color:var(--danger);">{{ counts.pending }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Acknowledged</div>
+        <div class="isx-stat__value" style="color:var(--plum);">{{ counts.acknowledged }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Resolved</div>
+        <div class="isx-stat__value" style="color:var(--success);">{{ counts.resolved }}</div>
+    </div>
+</div>
+
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-panel__head">
+        <div class="isx-panel__title">Incidents</div>
+    </div>
+
+    <div>
+        {% for alert in alerts %}
+        <div class="isx-incident
+            {% if alert.alert_type == 'SUSPICIOUS_ACTIVITY' %}isx-incident--suspicious
+            {% elif alert.alert_type == 'MEDICAL_EMERGENCY' %}isx-incident--medical
+            {% elif alert.alert_type == 'NEED_SUPERVISOR' %}isx-incident--supervisor
+            {% else %}isx-incident--other{% endif %}">
+
+            <div style="flex:1;">
+                <div class="isx-incident__head">
+                    <strong>{{ alert.hall.name }}</strong>
+                    <span class="isx-small isx-muted">{{ alert.timestamp|date:"H:i" }}</span>
+                    {% if alert.status == 'PENDING' %}
+                        <span class="isx-tag isx-tag--danger">Pending</span>
+                    {% elif alert.status == 'ACKNOWLEDGED' %}
+                        <span class="isx-tag isx-tag--plum">Acknowledged</span>
+                    {% else %}
+                        <span class="isx-tag isx-tag--success">Resolved</span>
+                    {% endif %}
+                </div>
+
+                <div class="isx-incident__title">{{ alert.get_alert_type_display }}</div>
+
+                <div class="isx-incident__meta">
+                    {% if alert.student %}
+                        Student {{ alert.student.roll_number }} — Row {{ alert.row }}, Seat {{ alert.seat }}
+                    {% else %}
+                        Location — Row {{ alert.row|default:"—" }}, Seat {{ alert.seat|default:"—" }}
+                    {% endif %}
+                    · Raised by {{ alert.invigilator.username }}
+                </div>
+
+                {% if alert.notes %}
+                <div class="isx-incident__notes">"{{ alert.notes }}"</div>
+                {% endif %}
+            </div>
+
+            <div class="isx-incident__actions">
+                {% if alert.status == 'PENDING' %}
+                <button onclick="updateAlertStatus({{ alert.id }}, 'ACKNOWLEDGED')" class="isx-btn isx-btn--ghost isx-btn--sm">Acknowledge</button>
+                {% endif %}
+                {% if alert.status != 'RESOLVED' %}
+                <button onclick="updateAlertStatus({{ alert.id }}, 'RESOLVED')" class="isx-btn isx-btn--sm" style="background:var(--success); border-color:var(--success);">Resolve</button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty">
+            {% include "partials/icon.html" with name="check-circle" %}
+            <p>All clear. No active alerts right now.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let secondsLeft = 5;
+    const counterEl = document.getElementById('refresh-count');
+    setInterval(() => {
+        secondsLeft -= 1;
+        if (counterEl) counterEl.textContent = Math.max(secondsLeft, 0);
+        if (secondsLeft <= 0) window.location.reload();
+    }, 1000);
+
+    function updateAlertStatus(alertId, status) {
+        const formData = new FormData();
+        formData.append('status', status);
+
+        fetch(`/api/update-alert/${alertId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        }).then(res => res.json()).then(data => {
+            if (data.status === 'success') window.location.reload();
+        });
+    }
+</script>
+{% endblock %}

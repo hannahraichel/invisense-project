@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}InviSense{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <header class="isx-topbar">
+        <div class="isx-topbar__inner">
+            <a href="{% url 'home' %}" class="isx-brand">
+                <span class="isx-brand__mark"></span>
+                <span class="isx-brand__name">InviSense</span>
+                <span class="isx-brand__tag">Exam Integrity System</span>
+            </a>
+
+            {% if user.is_authenticated %}
+            <button class="isx-nav-toggle" id="isx-nav-toggle" aria-label="Toggle menu" type="button">
+                {% include "partials/icon.html" with name="menu" %}
+            </button>
+
+            <nav class="isx-nav" id="isx-nav">
+                {% if user.role == 'ADMIN' %}
+                    <a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="dashboard" %} Exam Periods
+                    </a>
+                    <a href="{% url 'hall_manager' %}" class="{% if request.resolver_match.url_name == 'hall_manager' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="door" %} Sections
+                    </a>
+                    <a href="{% url 'manage_users' %}" class="{% if request.resolver_match.url_name == 'manage_users' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="users" %} Staff
+                    </a>
+                    <a href="{% url 'control_room' %}" class="{% if request.resolver_match.url_name == 'control_room' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="satellite" %} Live Feed
+                    </a>
+                {% elif user.role == 'INVIGILATOR' %}
+                    <a href="{% url 'invigilator_dashboard' %}" class="{% if request.resolver_match.url_name == 'invigilator_dashboard' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="qrcode" %} Scan &amp; Verify
+                    </a>
+                    <a href="{% url 'raise_alert' %}" class="{% if request.resolver_match.url_name == 'raise_alert' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="bell" %} Raise Alert
+                    </a>
+                {% elif user.role == 'CONTROL_ROOM' %}
+                    <a href="{% url 'control_room' %}" class="{% if request.resolver_match.url_name == 'control_room' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="satellite" %} Live Feed
+                    </a>
+                    <a href="{% url 'reports' %}" class="{% if request.resolver_match.url_name == 'reports' %}is-active{% endif %}">
+                        {% include "partials/icon.html" with name="file" %} Reports
+                    </a>
+                {% endif %}
+            </nav>
+
+            <div class="isx-topbar__user">
+                <div class="isx-user-chip">
+                    <div class="isx-user-chip__avatar">{{ user.username|make_list|first|upper }}</div>
+                    <div class="isx-user-chip__meta">
+                        <div class="isx-user-chip__name">{{ user.username }}</div>
+                        <div class="isx-user-chip__role">{{ user.get_role_display }}</div>
+                    </div>
+                </div>
+                <a href="{% url 'logout' %}" class="isx-logout" title="Log out">
+                    {% include "partials/icon.html" with name="logout" %}
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="isx-pageintro">
+        <div class="isx-pageintro__inner">
+            <div>
+                {% block eyebrow %}<span class="isx-eyebrow">InviSense</span>{% endblock %}
+                <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+                <p class="isx-pageintro__sub">{% block page_subtitle %}Welcome back{% endblock %}</p>
+            </div>
+            <div class="isx-pageintro__actions">
+                {% block header_actions %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="isx-flash">
+        {% for message in messages %}
+        <div class="isx-flash__item">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="isx-container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        var navToggle = document.getElementById('isx-nav-toggle');
+        var nav = document.getElementById('isx-nav');
+        if (navToggle && nav) {
+            navToggle.addEventListener('click', function () {
+                nav.classList.toggle('is-open');
+            });
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}{{ exam_session.subject }} — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">{{ exam_session.exam_period.name }}</span>{% endblock %}
+{% block page_title %}{{ exam_session.subject }} — {{ exam_session.exam_date }}{% endblock %}
+{% block page_subtitle %}
+    {{ exam_session.start_time|time:"g:i A" }}–{{ exam_session.end_time|time:"g:i A" }} ·
+    Scanning opens 3 hours before start ·
+    <strong>{{ exam_session.display_status }}</strong>
+{% endblock %}
+
+{% block header_actions %}
+{% if exam_session.status != 'READY' and exam_session.assigned_count > 0 and unassigned_count == 0 %}
+<form method="POST" action="{% url 'confirm_allocation' exam_session.id %}">
+    {% csrf_token %}
+    <button type="submit" class="isx-btn isx-btn--accent">
+        {% include "partials/icon.html" with name="check-circle" %} Confirm allocation
+    </button>
+</form>
+{% elif exam_session.status == 'READY' %}
+<span class="isx-tag isx-tag--success isx-tag--dot" style="padding:10px 16px;">Confirmed ready</span>
+{% endif %}
+<form method="POST" action="{% url 'stop_exam_session' exam_session.id %}">
+    {% csrf_token %}
+    {% if exam_session.status == 'STOPPED' %}
+        <button type="submit" class="isx-btn isx-btn--ghost">Reinstate</button>
+    {% else %}
+        <button type="submit" class="isx-btn isx-btn--danger">
+            {% include "partials/icon.html" with name="x-circle" %} Stop
+        </button>
+    {% endif %}
+</form>
+<form method="POST" action="{% url 'delete_exam_session' exam_session.id %}" onsubmit="return confirm('Delete this exam session? Only works if it has no seating/attendance history.');">
+    {% csrf_token %}
+    <button type="submit" class="isx-btn isx-btn--ghost" style="color:var(--danger); border-color:var(--danger);">Delete</button>
+</form>
+{% endblock %}
+
+{% block content %}
+
+<div class="isx-grid isx-grid--3" style="margin-bottom:22px;">
+    <div class="isx-stat">
+        <div class="isx-stat__label">Sections running this exam</div>
+        <div class="isx-stat__value">{{ exam_halls|length }}</div>
+    </div>
+    <div class="isx-stat">
+        <div class="isx-stat__label">Students assigned</div>
+        <div class="isx-stat__value">{{ exam_session.assigned_count }}</div>
+    </div>
+    <div class="isx-stat isx-stat--accent">
+        <div class="isx-stat__label">Checked in so far</div>
+        <div class="isx-stat__value">{{ exam_session.present_count }}</div>
+    </div>
+</div>
+
+<details style="margin-bottom:22px;">
+    <summary class="isx-btn isx-btn--ghost isx-btn--sm" style="cursor:pointer; display:inline-flex;">Edit subject / date / time</summary>
+    <div class="isx-panel" style="margin-top:12px; max-width:560px;">
+        <div class="isx-panel__body">
+            <form method="POST" action="{% url 'edit_exam_session' exam_session.id %}">
+                {% csrf_token %}
+                <div class="isx-field">
+                    <label for="subject">Subject</label>
+                    <input type="text" id="subject" name="subject" value="{{ exam_session.subject }}" required>
+                </div>
+                <div class="isx-field-row">
+                    <div class="isx-field">
+                        <label for="exam_date">Date</label>
+                        <input type="date" id="exam_date" name="exam_date" value="{{ exam_session.exam_date|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="isx-field">
+                        <label for="start_time">Start</label>
+                        <input type="time" id="start_time" name="start_time" value="{{ exam_session.start_time|time:'H:i' }}" required>
+                    </div>
+                    <div class="isx-field">
+                        <label for="end_time">End</label>
+                        <input type="time" id="end_time" name="end_time" value="{{ exam_session.end_time|time:'H:i' }}" required>
+                    </div>
+                </div>
+                <p class="isx-field__hint" style="margin-bottom:14px;">
+                    Re-validated on save: the new date/time can't already be in the past, and every
+                    section already reserved for this exam must still fit at the new time.
+                </p>
+                <button type="submit" class="isx-btn isx-btn--accent">Save changes</button>
+            </form>
+        </div>
+    </div>
+</details>
+
+{% if unassigned_count > 0 %}
+<div class="isx-panel" style="margin-bottom:22px; border-color: var(--warning);">
+    <div class="isx-panel__body" style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+        <div>
+            <div style="font-weight:600; font-size:15px;">
+                {{ unassigned_count }} roster student{{ unassigned_count|pluralize }} not yet assigned to this exam
+            </div>
+            <div class="isx-small isx-muted" style="margin-top:4px;">
+                Fills each section up to its reserved seat count, in roll-number order. Students
+                with a conflicting overlapping exam elsewhere are skipped and reported.
+            </div>
+        </div>
+        <form method="POST" action="{% url 'auto_assign_students' exam_session.id %}">
+            {% csrf_token %}
+            <button type="submit" class="isx-btn isx-btn--accent" {% if not exam_halls %}disabled{% endif %}>
+                {% include "partials/icon.html" with name="qrcode" %} Auto-assign students
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div class="isx-panel__head">
+        <div>
+            <div class="isx-panel__title">Sections for this exam</div>
+            <div class="isx-panel__hint">Each section's reserved-seat quota is separate from its full capacity — the rest can go to another exam at an overlapping time</div>
+        </div>
+    </div>
+    <div class="isx-rows">
+        {% for exam_hall in exam_halls %}
+        <div class="isx-row">
+            <div>
+                <div class="isx-row__title">{{ exam_hall.hall.name }}</div>
+                <div class="isx-row__meta">
+                    {{ exam_hall.assigned_count }} / {{ exam_hall.capacity_allocated }} seated (of {{ exam_hall.hall.capacity }} total in this room) ·
+                    {{ exam_hall.present_count }} checked in
+                </div>
+            </div>
+            <div class="isx-row__side">
+                <form method="POST" action="{% url 'edit_exam_hall_capacity' exam_hall.id %}" style="display:flex; gap:6px; align-items:center;">
+                    {% csrf_token %}
+                    <input type="text" name="capacity_allocated" value="{{ exam_hall.capacity_allocated }}" style="width:56px; padding:7px 8px; border:1px solid var(--line-strong); border-radius:3px; font-size:13px;">
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm">Save</button>
+                </form>
+                <form method="POST" action="{% url 'assign_exam_hall_invigilator' exam_hall.id %}" style="display:flex; gap:8px; align-items:center;">
+                    {% csrf_token %}
+                    <select name="invigilator_id" onchange="this.form.submit()" style="padding:8px 10px; border:1px solid var(--line-strong); border-radius:3px; font-size:13px; background:var(--surface);">
+                        <option value="">— Unassigned —</option>
+                        {% for inv in invigilators %}
+                        <option value="{{ inv.id }}" {% if exam_hall.invigilator_id == inv.id %}selected{% endif %}>{{ inv.username }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <form method="POST" action="{% url 'remove_exam_hall' exam_hall.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="isx-btn isx-btn--ghost isx-btn--sm" {% if exam_hall.assigned_count > 0 %}disabled title="Has students assigned"{% endif %}>Remove</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="isx-empty"><p>No sections selected for this exam yet — add one below.</p></div>
+        {% endfor %}
+    </div>
+    {% if available_halls %}
+    <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+        <form method="POST" action="{% url 'add_exam_hall' exam_session.id %}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            {% csrf_token %}
+            <select name="hall_id" style="flex:1; min-width:200px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px; font-size:13.5px; background:var(--surface);">
+                {% for hall in available_halls %}
+                <option value="{{ hall.id }}">{{ hall.name }} ({{ hall.capacity }} seat capacity)</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="capacity_allocated" placeholder="Seats to reserve" required style="width:150px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:3px; font-size:13.5px;">
+            <button type="submit" class="isx-btn isx-btn--ghost">
+                {% include "partials/icon.html" with name="plus" %} Add to this exam
+            </button>
+        </form>
+        <p class="isx-small isx-muted" style="margin-top:8px;">
+            No section here? Sections are managed globally under <a href="{% url 'hall_manager' %}" style="color:var(--accent-ink); font-weight:600;">Sections</a>.
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+{% if exam_session.assigned_count > 0 %}
+<div class="isx-panel isx-panel--pad-0">
+    <div class="isx-panel__head">
+        <div class="isx-panel__title">Allocation review</div>
+    </div>
+    {% for exam_hall in exam_halls %}
+        <div class="isx-panel__body" style="border-top:1px solid var(--line);">
+            <p style="font-weight:600; font-size:13.5px; margin-bottom:8px;">{{ exam_hall.hall.name }} — {{ exam_hall.review_assignments|length }} student{{ exam_hall.review_assignments|length|pluralize }}</p>
+            {% if exam_hall.review_assignments %}
+            <table class="isx-table">
+                <tr><th>Roll No.</th><th>Name</th><th>Row</th><th>Seat</th></tr>
+                {% for a in exam_hall.review_assignments %}
+                <tr><td>{{ a.student.roll_number }}</td><td>{{ a.student.name|default:"—" }}</td><td>{{ a.row }}</td><td>{{ a.seat }}</td></tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p class="isx-small isx-muted">No students assigned to this section yet.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
