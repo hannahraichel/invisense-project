@@ -13,18 +13,59 @@
 {% endblock %}
 
 {% block header_actions %}
-<a href="{% url 'upload_roster' period.id %}" class="isx-btn isx-btn--ghost">
-    {% include "partials/icon.html" with name="upload" %} Upload roster
-</a>
-<a href="{% url 'upload_timetable' period.id %}" class="isx-btn isx-btn--ghost">
-    {% include "partials/icon.html" with name="calendar" %} Upload timetable
-</a>
 <a href="{% url 'download_hall_tickets' period.id %}" class="isx-btn isx-btn--accent" {% if ready_count == 0 %}style="pointer-events:none; opacity:0.4;"{% endif %}>
     {% include "partials/icon.html" with name="download" %} Hall tickets (PDF)
 </a>
 {% endblock %}
 
 {% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <a href="{% url 'admin_dashboard' %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% include "partials/icon.html" with name="arrow-left" %} Back to Dashboard
+        </a>
+        <span class="isx-muted">/</span>
+        <span style="font-weight:600; font-size:13.5px;">{{ period.name }}</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'hall_manager' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="door" %} Halls Manager</a>
+        <a href="{% url 'manage_users' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="users" %} Staff</a>
+    </div>
+</div>
+
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div style="display:flex; align-items:stretch; border-bottom:1px solid var(--line); overflow-x:auto;">
+        <div style="flex:1; min-width:180px; padding:12px 16px; border-right:1px solid var(--line); display:flex; align-items:center; gap:10px; background:var(--surface);">
+            <span class="isx-tag {% if student_count > 0 %}isx-tag--success{% else %}isx-tag--accent{% endif %}" style="border-radius:50%; width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-weight:700;">1</span>
+            <div>
+                <div style="font-size:13px; font-weight:600;">Student Roster</div>
+                <div class="isx-small isx-muted">{% if student_count > 0 %}{{ student_count }} student{{ student_count|pluralize }} loaded ✓{% else %}<a href="{% url 'upload_roster' period.id %}" style="color:var(--accent-ink); font-weight:600;">Upload roster →</a>{% endif %}</div>
+            </div>
+        </div>
+        <div style="flex:1; min-width:180px; padding:12px 16px; border-right:1px solid var(--line); display:flex; align-items:center; gap:10px; background:var(--surface);">
+            <span class="isx-tag {% if exam_sessions.count > 0 %}isx-tag--success{% elif student_count > 0 %}isx-tag--accent{% else %}isx-tag--neutral{% endif %}" style="border-radius:50%; width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-weight:700;">2</span>
+            <div>
+                <div style="font-size:13px; font-weight:600;">Timetable</div>
+                <div class="isx-small isx-muted">{% if exam_sessions.count > 0 %}{{ exam_sessions.count }} scheduled ✓{% else %}<a href="{% url 'upload_timetable' period.id %}" style="color:var(--accent-ink); font-weight:600;">Upload timetable →</a>{% endif %}</div>
+            </div>
+        </div>
+        <div style="flex:1; min-width:180px; padding:12px 16px; border-right:1px solid var(--line); display:flex; align-items:center; gap:10px;">
+            <span class="isx-tag {% if ready_count > 0 and ready_count == student_count %}isx-tag--success{% elif exam_sessions.count > 0 %}isx-tag--accent{% else %}isx-tag--neutral{% endif %}" style="border-radius:50%; width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-weight:700;">3</span>
+            <div>
+                <div style="font-size:13px; font-weight:600;">Sections &amp; Seating</div>
+                <div class="isx-small isx-muted">Assign per exam session</div>
+            </div>
+        </div>
+        <div style="flex:1; min-width:180px; padding:12px 16px; display:flex; align-items:center; gap:10px;">
+            <span class="isx-tag {% if ready_count > 0 %}isx-tag--success{% else %}isx-tag--neutral{% endif %}" style="border-radius:50%; width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-weight:700;">4</span>
+            <div>
+                <div style="font-size:13px; font-weight:600;">Hall Tickets</div>
+                <div class="isx-small isx-muted">{% if ready_count > 0 %}{{ ready_count }} ready (PDF){% else %}Locked until seated{% endif %}</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div style="display:flex; gap:10px; margin-bottom:22px;">
     <form method="POST" action="{% url 'stop_period' period.id %}">

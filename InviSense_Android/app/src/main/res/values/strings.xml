@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">InviSense</string>
+    <string name="logout">Logout</string>
+    <string name="scan_title">Scan Hall Ticket</string>
+    <string name="alert_title">Raise Alert</string>
+    <string name="roster_title">Student Roster</string>
+</resources>

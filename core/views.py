@@ -1,14 +1,17 @@
 import csv
 import json
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
 from django.utils.dateparse import parse_date, parse_time
 
 from .allocation import AllocationError, auto_assign_exam_session
@@ -46,7 +49,11 @@ def get_current_invigilator_context(user):
     now = timezone.localtime()
     candidates = ExamHall.objects.filter(
         invigilator=user,
-        exam_session__exam_date__in=[now.date(), now.date() - timezone.timedelta(days=1)],
+        exam_session__exam_date__in=[
+            now.date() - timezone.timedelta(days=1),
+            now.date(),
+            now.date() + timezone.timedelta(days=1),
+        ],
         exam_session__status__in=ExamSession.LIVE_STATUSES,
     ).select_related('exam_session', 'hall')
     for eh in candidates:
@@ -79,16 +86,35 @@ def login_view(request):
         p = request.POST.get('password', '')
         user = authenticate(request, username=u, password=p)
         if user is not None:
+            if not user.is_active:
+                messages.error(request, 'This account is deactivated. Please contact an administrator.')
+                return render(request, 'login.html')
             login(request, user)
+            request.session.cycle_key()
+            next_url = request.GET.get('next') or request.POST.get('next')
+            if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
             return redirect('home')
         messages.error(request, 'Invalid username or password.')
     return render(request, 'login.html')
 
 
-@login_required
 def logout_view(request):
+    """
+    Complete logout: invalidates session, removes session cookies,
+    and returns a response with never-cache headers so browser history/Back
+    cannot expose authenticated pages.
+    """
     logout(request)
-    return redirect('login')
+    if hasattr(request, 'session'):
+        request.session.flush()
+    response = redirect('login')
+    add_never_cache_headers(response)
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    response.delete_cookie(settings.SESSION_COOKIE_NAME)
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -787,8 +813,12 @@ def invigilator_dashboard(request):
             exam_session__exam_date__gte=now.date(),
         ).select_related('exam_session', 'hall').order_by('exam_session__exam_date', 'exam_session__start_time')[:5]
 
+    my_alerts = Alert.objects.filter(invigilator=request.user).select_related(
+        'student', 'hall', 'exam_session'
+    ).order_by('-timestamp')[:20]
+
     return render(request, 'invigilator/dashboard.html', {
-        'current': current, 'roster': roster, 'upcoming': upcoming,
+        'current': current, 'roster': roster, 'upcoming': upcoming, 'my_alerts': my_alerts,
     })
 
 
@@ -841,7 +871,20 @@ def verify_qr(request):
 
     current = get_current_invigilator_context(request.user)
     if not current:
-        return JsonResponse({'status': 'error', 'message': 'No active exam session for you right now.'})
+        now = timezone.localtime()
+        upcoming = ExamHall.objects.filter(
+            invigilator=request.user,
+            exam_session__status__in=ExamSession.LIVE_STATUSES,
+            exam_session__exam_date__gte=now.date(),
+        ).select_related('exam_session').order_by('exam_session__exam_date', 'exam_session__start_time').first()
+
+        if upcoming and now < upcoming.exam_session.scan_window_start_dt():
+            opens_at = upcoming.exam_session.scan_window_start_dt().strftime("%I:%M %p")
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Scanning is locked. Scanning opens 3 hours before exam start time (at {opens_at}).',
+            })
+        return JsonResponse({'status': 'error', 'message': 'No active exam session for you right now. Scanning opens 3 hours before start time.'})
 
     hall_ticket = HallTicket.objects.filter(qr_token=qr_token).select_related('student').first()
     if not hall_ticket:
@@ -940,9 +983,14 @@ def raise_alert(request):
     if student_id and current:
         student = Student.objects.filter(id=student_id, exam_period=current.exam_session.exam_period).first()
 
+    my_alerts = Alert.objects.filter(invigilator=request.user).select_related(
+        'student', 'hall', 'exam_session'
+    ).order_by('-timestamp')[:20]
+
     return render(request, 'invigilator/raise_alert.html', {
         'current': current, 'alert_types': Alert.ALERT_TYPES,
         'student': student, 'scanned_students': scanned_students,
+        'my_alerts': my_alerts,
     })
 
 
@@ -955,12 +1003,12 @@ def raise_alert(request):
 def control_room(request):
     alerts = Alert.objects.filter(exam_session__exam_period__status=ExamPeriod.STATUS_ACTIVE).select_related(
         'hall', 'student', 'invigilator', 'exam_session'
+    ).order_by('-timestamp')
+    counts = alerts.aggregate(
+        pending=Count('id', filter=Q(status=Alert.STATUS_PENDING)),
+        acknowledged=Count('id', filter=Q(status=Alert.STATUS_ACK)),
+        resolved=Count('id', filter=Q(status=Alert.STATUS_RESOLVED)),
     )
-    counts = {
-        'pending': alerts.filter(status=Alert.STATUS_PENDING).count(),
-        'acknowledged': alerts.filter(status=Alert.STATUS_ACK).count(),
-        'resolved': alerts.filter(status=Alert.STATUS_RESOLVED).count(),
-    }
     return render(request, 'control_room/dashboard.html', {'alerts': alerts, 'counts': counts})
 
 
@@ -983,7 +1031,17 @@ def update_alert(request, alert_id):
 @login_required
 @role_required(User.ROLE_CONTROL_ROOM, User.ROLE_ADMIN)
 def reports(request):
-    sessions_list = ExamSession.objects.select_related('exam_period').all()
+    alerts_prefetch = Prefetch(
+        'alerts',
+        queryset=Alert.objects.select_related('hall', 'student', 'invigilator').order_by('-timestamp')
+    )
+    sessions_list = (
+        ExamSession.objects
+        .select_related('exam_period')
+        .annotate(alerts_count=Count('alerts'))
+        .prefetch_related(alerts_prefetch)
+        .order_by('-exam_date', '-start_time')
+    )
     paginator = Paginator(sessions_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'control_room/reports.html', {'page_obj': page_obj})
@@ -998,16 +1056,139 @@ def export_session_report(request, session_id):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     writer = csv.writer(response)
-    writer.writerow(['Timestamp', 'Section', 'Alert Type', 'Status', 'Row', 'Seat', 'Invigilator', 'Notes'])
-    for alert in exam_session.alerts.select_related('hall', 'invigilator').order_by('timestamp'):
+    writer.writerow(['Flag Time', 'Hall', 'Seat', 'Student Name', 'Roll Number', 'Type', 'Status', 'Invigilator Name', 'Notes'])
+    for alert in exam_session.alerts.select_related('hall', 'invigilator', 'student').order_by('timestamp'):
+        seat_parts = []
+        if alert.row:
+            seat_parts.append(f"Row {alert.row}")
+        if alert.seat:
+            seat_parts.append(f"Seat {alert.seat}")
+        seat_str = ", ".join(seat_parts) if seat_parts else '-'
+        student_name = alert.student.name if (alert.student and alert.student.name) else (alert.student.roll_number if alert.student else '-')
+        roll_no = alert.student.roll_number if alert.student else '-'
+        invigilator_name = alert.invigilator.get_full_name() or alert.invigilator.username
         writer.writerow([
-            alert.timestamp.strftime('%Y-%m-%d %H:%M'),
+            alert.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             alert.hall.name,
+            seat_str,
+            student_name,
+            roll_no,
             alert.get_alert_type_display(),
             alert.get_status_display(),
-            alert.row or '-',
-            alert.seat or '-',
-            alert.invigilator.username,
+            invigilator_name,
             alert.notes or '',
         ])
     return response
+
+
+# ---------------------------------------------------------------------------
+# Admin — Setup session & Upload mapping (convenience & backward compatibility)
+# ---------------------------------------------------------------------------
+
+@login_required
+@role_required(User.ROLE_ADMIN)
+def setup_session(request):
+    if request.method == 'POST':
+        exam_date_str = request.POST.get('date', '').strip()
+        shift = request.POST.get('shift', 'Morning').strip()
+        hall_number = request.POST.get('hall_number', '').strip()
+        try:
+            capacity = max(int(request.POST.get('capacity', '30')), 1)
+        except (ValueError, TypeError):
+            capacity = 30
+        try:
+            seats_per_row = max(int(request.POST.get('seats_per_row', '6')), 1)
+        except (ValueError, TypeError):
+            seats_per_row = 6
+
+        exam_date = parse_date(exam_date_str) or timezone.now().date()
+        shift_times = {
+            'Morning': (timezone.datetime.strptime('09:30', '%H:%M').time(), timezone.datetime.strptime('12:30', '%H:%M').time()),
+            'Afternoon': (timezone.datetime.strptime('13:30', '%H:%M').time(), timezone.datetime.strptime('16:30', '%H:%M').time()),
+            'Evening': (timezone.datetime.strptime('17:30', '%H:%M').time(), timezone.datetime.strptime('20:30', '%H:%M').time()),
+        }
+        start_time, end_time = shift_times.get(shift, shift_times['Morning'])
+
+        period = ExamPeriod.objects.filter(status=ExamPeriod.STATUS_ACTIVE).first()
+        if not period:
+            period = ExamPeriod.objects.create(name=f"Exam Period ({exam_date.strftime('%B %Y')})")
+
+        session = ExamSession.objects.create(
+            exam_period=period,
+            subject=f"{shift} Exam Session",
+            exam_date=exam_date,
+            start_time=start_time,
+            end_time=end_time,
+            status=ExamSession.STATUS_SCHEDULED,
+        )
+
+        if hall_number:
+            hall, _ = Hall.objects.get_or_create(
+                name=hall_number,
+                defaults={'capacity': capacity, 'seats_per_row': seats_per_row}
+            )
+            ExamHall.objects.create(
+                exam_session=session,
+                hall=hall,
+                capacity_allocated=min(capacity, hall.capacity),
+            )
+
+        messages.success(request, f'Session created for {exam_date} ({shift}).')
+        return redirect('exam_session_detail', session_id=session.id)
+
+    return render(request, 'admin/setup_session.html')
+
+
+@login_required
+@role_required(User.ROLE_ADMIN)
+def upload_mapping(request):
+    sessions = ExamSession.objects.filter(status__in=ExamSession.LIVE_STATUSES).select_related('exam_period')
+    if not sessions.exists():
+        period = ExamPeriod.objects.filter(status=ExamPeriod.STATUS_ACTIVE).first()
+        if not period:
+            period = ExamPeriod.objects.create(name='General Exam Period')
+        default_session = ExamSession.objects.create(
+            exam_period=period, subject='General Exam',
+            exam_date=timezone.now().date() + timezone.timedelta(days=1),
+            start_time=timezone.datetime.strptime('09:30', '%H:%M').time(),
+            end_time=timezone.datetime.strptime('12:30', '%H:%M').time(),
+        )
+        sessions = ExamSession.objects.filter(id=default_session.id)
+
+    if request.method == 'POST':
+        session_id = request.POST.get('session_id')
+        exam_session = get_object_or_404(ExamSession, id=session_id)
+        csv_file = request.FILES.get('mapping_file')
+
+        if not csv_file or not csv_file.name.lower().endswith('.csv'):
+            messages.error(request, 'Please upload a valid CSV file.')
+            return redirect('upload_mapping')
+
+        try:
+            file_data = csv_file.read().decode('utf-8-sig').splitlines()
+        except UnicodeDecodeError:
+            messages.error(request, 'Could not read file. Please save as UTF-8.')
+            return redirect('upload_mapping')
+
+        reader = csv.DictReader(file_data)
+        created = 0
+        for row in reader:
+            roll_number = (row.get('roll_number') or '').strip()
+            if not roll_number:
+                continue
+            student, _ = Student.objects.get_or_create(
+                exam_period=exam_session.exam_period,
+                roll_number=roll_number,
+                defaults={
+                    'name': (row.get('name') or '').strip(),
+                    'course': (row.get('course') or row.get('subject_code') or '').strip(),
+                }
+            )
+            HallTicket.objects.get_or_create(student=student)
+            created += 1
+
+        messages.success(request, f'Imported {created} student(s) successfully.')
+        return redirect('period_detail', period_id=exam_session.exam_period_id)
+
+    return render(request, 'admin/upload_mapping.html', {'sessions': sessions})
+

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Classic White & Grey Palette -->
+    <color name="primary">#1F2937</color>           <!-- deep charcoal grey -->
+    <color name="primary_variant">#111827</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <color name="secondary">#4B5563</color>         <!-- medium slate grey -->
+    <color name="secondary_variant">#374151</color>
+    <color name="on_secondary">#FFFFFF</color>
+
+    <!-- Backgrounds: pure white & soft subtle greys -->
+    <color name="background">#F3F4F6</color>        <!-- clean light grey background -->
+    <color name="surface">#FFFFFF</color>           <!-- crisp white cards -->
+    <color name="surface_variant">#E5E7EB</color>   <!-- subtle grey inputs and borders -->
+    <color name="toolbar_bg">#FFFFFF</color>
+
+    <!-- Text -->
+    <color name="text_primary">#111827</color>      <!-- near-black for high contrast readability -->
+    <color name="text_secondary">#4B5563</color>    <!-- medium charcoal grey for labels -->
+    <color name="muted">#9CA3AF</color>             <!-- light muted grey -->
+
+    <!-- Status & Alerts -->
+    <color name="success">#15803D</color>
+    <color name="success_bg">#DCFCE7</color>
+
+    <color name="warning">#B45309</color>
+    <color name="warning_bg">#FEF3C7</color>
+
+    <color name="danger">#B91C1C</color>
+    <color name="error">#B91C1C</color>
+    <color name="error_bg">#FEE2E2</color>
+
+    <!-- Borders & Dividers -->
+    <color name="border">#E5E7EB</color>
+    <color name="divider">#E5E7EB</color>
+</resources>

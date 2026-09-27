@@ -104,10 +104,100 @@
 </div>
 {% endif %}
 {% endif %}
+
+<!-- My Flagged Incidents History -->
+<div class="isx-panel isx-panel--pad-0" style="margin-top:22px;">
+    <div class="isx-panel__head" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <div class="isx-panel__title">My Flagged Incidents History</div>
+            <div class="isx-small isx-muted">Auditable log of alerts reported by you</div>
+        </div>
+        <a href="{% url 'raise_alert' %}" class="isx-btn isx-btn--danger isx-btn--sm">
+            {% include "partials/icon.html" with name="bell" %} Raise Alert
+        </a>
+    </div>
+
+    {% if my_alerts %}
+    <div style="width:100%; overflow-x:auto;">
+        <table class="isx-table">
+            <thead>
+                <tr>
+                    <th>Flag Time</th>
+                    <th>Hall / Session</th>
+                    <th>Seat</th>
+                    <th>Student Name</th>
+                    <th>Alert Type</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in my_alerts %}
+                <tr>
+                    <td>
+                        <strong>{{ a.timestamp|date:"H:i" }}</strong>
+                        <div class="isx-small isx-muted">{{ a.timestamp|date:"M d, Y" }}</div>
+                    </td>
+                    <td>
+                        <strong>{{ a.hall.name }}</strong>
+                        <div class="isx-small isx-muted">{{ a.exam_session.subject }}</div>
+                    </td>
+                    <td>
+                        {% if a.seat %}
+                            {% if a.row %}Row {{ a.row }}, {% endif %}Seat {{ a.seat }}
+                        {% elif a.row %}
+                            Row {{ a.row }}
+                        {% else %}
+                            <span class="isx-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if a.student %}
+                            <strong>{{ a.student.name|default:a.student.roll_number }}</strong>
+                            {% if a.student.name and a.student.roll_number %}
+                                <div class="isx-small isx-muted">{{ a.student.roll_number }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="isx-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="isx-tag {% if a.alert_type == 'SUSPICIOUS_ACTIVITY' %}isx-tag--danger{% elif a.alert_type == 'NEED_SUPERVISOR' %}isx-tag--plum{% elif a.alert_type == 'MEDICAL_EMERGENCY' %}isx-tag--danger{% else %}isx-tag--neutral{% endif %}">
+                            {{ a.get_alert_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if a.status == 'PENDING' %}
+                            <span class="isx-tag isx-tag--danger">Pending</span>
+                        {% elif a.status == 'ACKNOWLEDGED' %}
+                            <span class="isx-tag isx-tag--plum">Acknowledged</span>
+                        {% else %}
+                            <span class="isx-tag isx-tag--success">Resolved</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if a.notes %}
+                            <span class="isx-small">{{ a.notes }}</span>
+                        {% else %}
+                            <span class="isx-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="isx-empty" style="padding: 28px;">
+        <p>No incidents flagged by you yet.</p>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 {% if current %}
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
     const html5QrCode = new Html5Qrcode("qr-reader");
     const resultCard = document.getElementById('result-card');

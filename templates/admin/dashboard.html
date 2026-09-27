@@ -1,27 +1,70 @@
 {% extends 'base.html' %}
-{% block title %}Exam Periods — InviSense{% endblock %}
+{% block title %}Overview — InviSense{% endblock %}
 {% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
-{% block page_title %}Exam periods{% endblock %}
-{% block page_subtitle %}Each exam period holds one roster and its own timetable — sections are shared globally across all periods{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block page_subtitle %}Exam management dashboard — periods, halls, rosters, and invigilation integrity{% endblock %}
+
+{% block header_actions %}
+{% endblock %}
 
 {% block content %}
 
 <div class="isx-grid isx-grid--4" style="margin-bottom:22px;">
     <div class="isx-stat">
-        <div class="isx-stat__label">Active periods</div>
+        <div class="isx-stat__label">ACTIVE SESSIONS</div>
         <div class="isx-stat__value">{{ stats.active_periods }}</div>
     </div>
     <div class="isx-stat">
-        <div class="isx-stat__label">Students on file</div>
+        <div class="isx-stat__label">STUDENTS MAPPED</div>
         <div class="isx-stat__value">{{ stats.total_students }}</div>
     </div>
     <div class="isx-stat isx-stat--accent">
-        <div class="isx-stat__label">Pending alerts</div>
+        <div class="isx-stat__label">PENDING ALERTS</div>
         <div class="isx-stat__value">{{ stats.pending_alerts }}</div>
     </div>
     <div class="isx-stat">
-        <div class="isx-stat__label">Invigilators on file</div>
+        <div class="isx-stat__label">INVIGILATORS ON FILE</div>
         <div class="isx-stat__value">{{ stats.total_invigilators }}</div>
+    </div>
+</div>
+
+<div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
+    <div class="isx-panel__head" style="border-bottom:1px solid var(--line);">
+        <div>
+            <div class="isx-panel__title">Examination Workflow Pipeline</div>
+            <div class="isx-panel__hint">End-to-end exam administration flow</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <a href="{% url 'hall_manager' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="door" %} Halls Manager</a>
+            <a href="{% url 'manage_users' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="users" %} Staff</a>
+        </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));">
+        <div style="padding:14px 16px; border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
+            <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Step 1</div>
+            <div style="font-weight:600; font-size:13.5px;">Exam Period</div>
+            <p class="isx-small isx-muted" style="margin-top:2px;">Define semester or examination cycle</p>
+        </div>
+        <div style="padding:14px 16px; border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
+            <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Step 2</div>
+            <div style="font-weight:600; font-size:13.5px;">Student Roster</div>
+            <p class="isx-small isx-muted" style="margin-top:2px;">Import students &amp; generate permanent QRs</p>
+        </div>
+        <div style="padding:14px 16px; border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
+            <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Step 3</div>
+            <div style="font-weight:600; font-size:13.5px;">Timetable</div>
+            <p class="isx-small isx-muted" style="margin-top:2px;">Schedule subjects, dates &amp; shifts</p>
+        </div>
+        <div style="padding:14px 16px; border-right:1px solid var(--line); border-bottom:1px solid var(--line);">
+            <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Step 4</div>
+            <div style="font-weight:600; font-size:13.5px;">Allocate Halls</div>
+            <p class="isx-small isx-muted" style="margin-top:2px;">Auto-seat students &amp; assign invigilators</p>
+        </div>
+        <div style="padding:14px 16px; border-bottom:1px solid var(--line);">
+            <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Step 5</div>
+            <div style="font-weight:600; font-size:13.5px;">Hall Tickets &amp; Live</div>
+            <p class="isx-small isx-muted" style="margin-top:2px;">Download PDFs &amp; track check-in</p>
+        </div>
     </div>
 </div>
 
@@ -71,8 +114,8 @@
                     <label for="name">Name</label>
                     <input type="text" id="name" name="name" placeholder="e.g. MCA / iMCA Semester 3, Aug 2026" required>
                     <p class="isx-field__hint">
-                        One roster and timetable, scoped to this period. Sections/halls are
-                        shared globally — set those up under "Sections" in the top nav.
+                        One roster and timetable, scoped to this period. Halls are
+                        shared globally — set those up under "Halls Manager" in the top nav.
                     </p>
                 </div>
                 <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">

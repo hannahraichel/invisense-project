@@ -1,14 +1,16 @@
 from django.urls import path
 
-from . import views
+from . import api_views, views
 
 urlpatterns = [
     path('', views.home_redirect, name='home'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
-    # Admin — exam periods
+    # Admin — exam periods & workflow
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('setup-session/', views.setup_session, name='setup_session'),
+    path('upload-mapping/', views.upload_mapping, name='upload_mapping'),
     path('period/<int:period_id>/', views.period_detail, name='period_detail'),
     path('period/<int:period_id>/edit/', views.edit_period, name='edit_period'),
     path('period/<int:period_id>/stop/', views.stop_period, name='stop_period'),
@@ -45,11 +47,20 @@ urlpatterns = [
     path('users/', views.manage_users, name='manage_users'),
     path('users/<int:user_id>/toggle/', views.toggle_user_active, name='toggle_user_active'),
 
-    # Invigilator
+    # Invigilator web
     path('invigilator/', views.invigilator_dashboard, name='invigilator_dashboard'),
     path('api/hall-roster/', views.hall_roster_json, name='hall_roster_json'),
     path('api/verify-qr/', views.verify_qr, name='verify_qr'),
     path('raise-alert/', views.raise_alert, name='raise_alert'),
+
+    # Invigilator Mobile REST API
+    path('api/invigilator/login/', api_views.api_invigilator_login, name='api_invigilator_login'),
+    path('api/invigilator/logout/', api_views.api_invigilator_logout, name='api_invigilator_logout'),
+    path('api/invigilator/dashboard/', api_views.api_invigilator_dashboard, name='api_invigilator_dashboard'),
+    path('api/invigilator/roster/', api_views.api_invigilator_roster, name='api_invigilator_roster'),
+    path('api/invigilator/verify-qr/', api_views.api_invigilator_verify_qr, name='api_invigilator_verify_qr'),
+    path('api/invigilator/raise-alert/', api_views.api_invigilator_raise_alert, name='api_invigilator_raise_alert'),
+    path('api/invigilator/alert-types/', api_views.api_invigilator_alert_types, name='api_invigilator_alert_types'),
 
     # Control room
     path('control-room/', views.control_room, name='control_room'),

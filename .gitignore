@@ -1,18 +1,115 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-venv/
+# ==============================================================================
+# InviSense Project — Comprehensive .gitignore
+# ==============================================================================
 
-# Django
+# ------------------------------------------------------------------------------
+# 1. Environment & Sensitive Credentials (CRITICAL)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ------------------------------------------------------------------------------
+# 2. Python & Bytecode
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ------------------------------------------------------------------------------
+# 3. Virtual Environments
+# ------------------------------------------------------------------------------
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# 4. Django Runtime, DB & User Uploads
+# ------------------------------------------------------------------------------
 *.sqlite3
+*.db
 /media/
 /staticfiles/
-.env
+static_root/
+*.log
 
-# IDE
+# ------------------------------------------------------------------------------
+# 5. Android & Gradle Build Artifacts
+# ------------------------------------------------------------------------------
+# Gradle cache
+.gradle/
+**/.gradle/
+build/
+**/build/
+
+# Local Android SDK configuration (must never be committed)
+local.properties
+**/local.properties
+
+# Android Studio / IntelliJ project configs
+*.iml
+**/*.iml
 .idea/
-.vscode/
+**/.idea/
+.cxx/
+**/captures/
+output-metadata.json
 
-# OS
+# Android Signing keys
+*.jks
+*.keystore
+
+# ------------------------------------------------------------------------------
+# 6. IDEs & Editors
+# ------------------------------------------------------------------------------
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------------------------
+# 7. OS Generated Files
+# ------------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ------------------------------------------------------------------------------
+# 8. Testing & Selenium Drivers
+# ------------------------------------------------------------------------------
+selenium_clean/__pycache__/
+chromedriver.exe
+geckodriver.exe

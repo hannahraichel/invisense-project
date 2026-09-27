@@ -23,13 +23,14 @@ for test in tests:
     print(f"{'-' * 60}")
 
     result = subprocess.run(
-        [sys.executable, test]
+        [sys.executable, test],
+        env={**__import__('os').environ, 'PYTHONIOENCODING': 'utf-8'}
     )
 
     if result.returncode == 0:
-        print(f"✅ {test} PASSED")
+        print(f"[PASS] {test} PASSED")
     else:
-        print(f"❌ {test} FAILED")
+        print(f"[FAIL] {test} FAILED")
         failed.append(test)
 
 print("\n" + "=" * 60)
@@ -46,12 +47,12 @@ print(f"Failed      : {len(failed)}")
 if failed:
     print("\nFailed tests:")
     for test in failed:
-        print(f"  ❌ {test}")
+        print(f"  [FAIL] {test}")
 
-    print("\n❌ SOME SELENIUM TESTS FAILED")
+    print("\n[FAIL] SOME SELENIUM TESTS FAILED")
     sys.exit(1)
 
 else:
-    print("\n🎉 ALL SELENIUM TESTS PASSED!")
-    print("✅ InviSense Selenium testing completed successfully.")
+    print("\n[PASS] ALL SELENIUM TESTS PASSED!")
+    print("[OK] InviSense Selenium testing completed successfully.")
     sys.exit(0)

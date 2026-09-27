@@ -54,19 +54,19 @@ try:
 
     # 8. Verify navigation links
     assert driver.find_element(
-        By.LINK_TEXT, "Setup Exam"
+        By.PARTIAL_LINK_TEXT, "Exam Periods"
     ).is_displayed()
 
     assert driver.find_element(
-        By.LINK_TEXT, "Upload Roster"
+        By.PARTIAL_LINK_TEXT, "Halls Manager"
     ).is_displayed()
 
     assert driver.find_element(
-        By.LINK_TEXT, "Staff"
+        By.PARTIAL_LINK_TEXT, "Staff"
     ).is_displayed()
 
     assert driver.find_element(
-        By.LINK_TEXT, "Live Feed"
+        By.PARTIAL_LINK_TEXT, "Live Feed"
     ).is_displayed()
 
     print("Navigation links verified")

@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}InviSense{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
 
     <header class="isx-topbar">
         <div class="isx-topbar__inner">
-            <a href="{% url 'home' %}" class="isx-brand">
-                <span class="isx-brand__mark"></span>
+            <a href="{% url 'home' %}" class="isx-brand" style="display:flex; align-items:center; gap:8px;">
+                <img src="/static/img/logo.png" alt="InviSense" style="width:26px; height:26px; border-radius:6px; object-fit:contain;">
                 <span class="isx-brand__name">InviSense</span>
                 <span class="isx-brand__tag">Exam Integrity System</span>
             </a>
@@ -29,7 +29,7 @@
                         {% include "partials/icon.html" with name="dashboard" %} Exam Periods
                     </a>
                     <a href="{% url 'hall_manager' %}" class="{% if request.resolver_match.url_name == 'hall_manager' %}is-active{% endif %}">
-                        {% include "partials/icon.html" with name="door" %} Sections
+                        {% include "partials/icon.html" with name="door" %} Halls Manager
                     </a>
                     <a href="{% url 'manage_users' %}" class="{% if request.resolver_match.url_name == 'manage_users' %}is-active{% endif %}">
                         {% include "partials/icon.html" with name="users" %} Staff
@@ -103,6 +103,13 @@
                 nav.classList.toggle('is-open');
             });
         }
+
+        // Prevent back-button viewing from browser Back-Forward Cache (bfcache) after logout
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted || (window.performance && window.performance.navigation && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        });
     </script>
     {% block scripts %}{% endblock %}
 </body>

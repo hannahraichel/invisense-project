@@ -6,6 +6,17 @@
 
 {% block content %}
 
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <a href="{% url 'period_detail' period.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% include "partials/icon.html" with name="arrow-left" %} Back to {{ period.name }}
+        </a>
+        <a href="{% url 'admin_dashboard' %}" class="isx-btn isx-btn--ghost isx-btn--sm">Dashboard</a>
+        <span class="isx-muted">/</span>
+        <span style="font-weight:600; font-size:13.5px;">Upload Timetable</span>
+    </div>
+</div>
+
 {% if report %}
 <div class="isx-panel isx-panel--pad-0" style="margin-bottom:22px;">
     <div class="isx-panel__head"><div class="isx-panel__title">Timetable processing result</div></div>
@@ -39,9 +50,12 @@
                     <input type="file" id="timetable_file" name="timetable_file" accept=".csv" required>
                     <p class="isx-field__hint">Requires: subject, exam_date, start_time, end_time.</p>
                 </div>
-                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
-                    {% include "partials/icon.html" with name="upload" %} Upload timetable
-                </button>
+                <div style="display:flex; gap:10px; margin-top:16px;">
+                    <button type="submit" class="isx-btn isx-btn--accent" style="flex:1;">
+                        {% include "partials/icon.html" with name="upload" %} Upload timetable
+                    </button>
+                    <a href="{% url 'period_detail' period.id %}" class="isx-btn isx-btn--ghost">Cancel</a>
+                </div>
             </form>
         </div>
     </div>

@@ -15,7 +15,7 @@
                     <div class="isx-row__meta">
                         {{ session.exam_period.name }} ·
                         {% if session.status == 'CANCELLED' %}Cancelled{% elif session.status == 'CLOSED' %}Closed{% else %}Scheduled{% endif %}
-                        · {{ session.alerts.count }} alert{{ session.alerts.count|pluralize }} recorded
+                        · {{ session.alerts_count }} alert{{ session.alerts_count|pluralize }} recorded
                     </div>
                 </div>
                 <a href="{% url 'export_session_report' session.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
@@ -23,21 +23,69 @@
                 </a>
             </div>
 
-            {% if session.alerts.count > 0 %}
-            <table class="isx-table" style="width:100%;">
-                <tr><th>Time</th><th>Hall</th><th>Type</th><th>Status</th></tr>
-                {% for alert in session.alerts.all|slice:":5" %}
-                <tr>
-                    <td>{{ alert.timestamp|date:"H:i" }}</td>
-                    <td>{{ alert.hall.name }}</td>
-                    <td>{{ alert.get_alert_type_display }}</td>
-                    <td>{{ alert.get_status_display }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% if session.alerts.count > 5 %}
-            <p class="isx-small isx-muted">And {{ session.alerts.count|add:"-5" }} more — export the CSV for the full log.</p>
-            {% endif %}
+            {% if session.alerts.all %}
+            <div style="width:100%; overflow-x:auto;">
+                <table class="isx-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Flag Time</th>
+                            <th>Hall</th>
+                            <th>Seat</th>
+                            <th>Student Name</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Invigilator Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for alert in session.alerts.all %}
+                    <tr>
+                        <td>
+                            <strong>{{ alert.timestamp|date:"H:i" }}</strong>
+                            <div class="isx-small isx-muted">{{ alert.timestamp|date:"M d, Y" }}</div>
+                        </td>
+                        <td>{{ alert.hall.name }}</td>
+                        <td>
+                            {% if alert.seat %}
+                                {% if alert.row %}Row {{ alert.row }}, {% endif %}Seat {{ alert.seat }}
+                            {% elif alert.row %}
+                                Row {{ alert.row }}
+                            {% else %}
+                                <span class="isx-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if alert.student %}
+                                <strong>{{ alert.student.name|default:alert.student.roll_number }}</strong>
+                                {% if alert.student.name and alert.student.roll_number %}
+                                    <div class="isx-small isx-muted">{{ alert.student.roll_number }}</div>
+                                {% endif %}
+                            {% else %}
+                                <span class="isx-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="isx-tag {% if alert.alert_type == 'SUSPICIOUS_ACTIVITY' %}isx-tag--danger{% elif alert.alert_type == 'NEED_SUPERVISOR' %}isx-tag--plum{% elif alert.alert_type == 'MEDICAL_EMERGENCY' %}isx-tag--danger{% else %}isx-tag--neutral{% endif %}">
+                                {{ alert.get_alert_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if alert.status == 'PENDING' %}
+                                <span class="isx-tag isx-tag--danger">Pending</span>
+                            {% elif alert.status == 'ACKNOWLEDGED' %}
+                                <span class="isx-tag isx-tag--plum">Acknowledged</span>
+                            {% else %}
+                                <span class="isx-tag isx-tag--success">Resolved</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ alert.invigilator.get_full_name|default:alert.invigilator.username }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% endif %}
         </div>
         {% empty %}

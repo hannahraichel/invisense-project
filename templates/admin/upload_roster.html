@@ -5,6 +5,17 @@
 {% block page_subtitle %}Uploaded once for the whole exam period — issues each student's one permanent QR{% endblock %}
 
 {% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <a href="{% url 'period_detail' period.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% include "partials/icon.html" with name="arrow-left" %} Back to {{ period.name }}
+        </a>
+        <a href="{% url 'admin_dashboard' %}" class="isx-btn isx-btn--ghost isx-btn--sm">Dashboard</a>
+        <span class="isx-muted">/</span>
+        <span style="font-weight:600; font-size:13.5px;">Upload Roster</span>
+    </div>
+</div>
+
 <div class="isx-split">
     <div class="isx-panel">
         <div class="isx-panel__body">
@@ -15,9 +26,12 @@
                     <input type="file" id="roster_file" name="roster_file" accept=".csv" required>
                     <p class="isx-field__hint">Only <code>roll_number</code> is required.</p>
                 </div>
-                <button type="submit" class="isx-btn isx-btn--accent isx-btn--block">
-                    {% include "partials/icon.html" with name="upload" %} Upload roster
-                </button>
+                <div style="display:flex; gap:10px; margin-top:16px;">
+                    <button type="submit" class="isx-btn isx-btn--accent" style="flex:1;">
+                        {% include "partials/icon.html" with name="upload" %} Upload roster
+                    </button>
+                    <a href="{% url 'period_detail' period.id %}" class="isx-btn isx-btn--ghost">Cancel</a>
+                </div>
             </form>
         </div>
     </div>

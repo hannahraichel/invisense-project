@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="@color/surface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Top row: Type & Status badges -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvAlertItemType"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Need Supervisor"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary" />
+
+            <TextView
+                android:id="@+id/tvAlertItemStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pending"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:textColor="@color/warning"
+                android:background="@color/warning_bg"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp" />
+        </LinearLayout>
+
+        <!-- Second row: Student / Seat details -->
+        <TextView
+            android:id="@+id/tvAlertItemTarget"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="A. Menon (MCA001) · Row A, Seat 1"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="6dp" />
+
+        <!-- Third row: Timestamp -->
+        <TextView
+            android:id="@+id/tvAlertItemTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="16:56 · Sept 27"
+            android:textSize="11.5sp"
+            android:textColor="@color/muted"
+            android:layout_marginTop="3dp" />
+
+        <!-- Notes (if any) -->
+        <TextView
+            android:id="@+id/tvAlertItemNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="&quot;Student having calculator issue&quot;"
+            android:textSize="12sp"
+            android:textStyle="italic"
+            android:textColor="@color/text_secondary"
+            android:background="@color/background"
+            android:padding="8dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

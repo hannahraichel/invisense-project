@@ -37,6 +37,23 @@
 
 {% block content %}
 
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <a href="{% url 'period_detail' exam_session.exam_period.id %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            {% include "partials/icon.html" with name="arrow-left" %} Back to {{ exam_session.exam_period.name }}
+        </a>
+        <a href="{% url 'admin_dashboard' %}" class="isx-btn isx-btn--ghost isx-btn--sm">
+            Dashboard
+        </a>
+        <span class="isx-muted">/</span>
+        <span style="font-weight:600; font-size:13.5px;">{{ exam_session.subject }}</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'hall_manager' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="door" %} Sections</a>
+        <a href="{% url 'manage_users' %}" class="isx-btn isx-btn--ghost isx-btn--sm">{% include "partials/icon.html" with name="users" %} Staff</a>
+    </div>
+</div>
+
 <div class="isx-grid isx-grid--3" style="margin-bottom:22px;">
     <div class="isx-stat">
         <div class="isx-stat__label">Sections running this exam</div>

@@ -90,10 +90,64 @@
 <script>
     let secondsLeft = 5;
     const counterEl = document.getElementById('refresh-count');
-    setInterval(() => {
+    let refreshTimer = null;
+    let isNavigating = false;
+
+    // Immediately stop refresh timer whenever user clicks any link (e.g. Reports)
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a');
+        if (link && link.href && !link.href.startsWith('javascript:')) {
+            isNavigating = true;
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (counterEl) {
+                const indicator = document.getElementById('refresh-indicator');
+                if (indicator) indicator.textContent = 'Loading...';
+            }
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        isNavigating = true;
+        if (refreshTimer) clearInterval(refreshTimer);
+    });
+
+    async function silentRefresh() {
+        if (isNavigating || document.hidden) return;
+        try {
+            const resp = await fetch(window.location.href, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store'
+            });
+            if (resp.ok && !isNavigating) {
+                const text = await resp.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                const newGrid = doc.querySelector('.isx-grid');
+                const currGrid = document.querySelector('.isx-grid');
+                if (newGrid && currGrid) {
+                    currGrid.innerHTML = newGrid.innerHTML;
+                }
+
+                const newPanel = doc.querySelector('.isx-panel');
+                const currPanel = document.querySelector('.isx-panel');
+                if (newPanel && currPanel) {
+                    currPanel.innerHTML = newPanel.innerHTML;
+                }
+            }
+        } catch (err) {
+            console.error('Silent refresh failed', err);
+        }
+    }
+
+    refreshTimer = setInterval(() => {
+        if (isNavigating) return;
         secondsLeft -= 1;
         if (counterEl) counterEl.textContent = Math.max(secondsLeft, 0);
-        if (secondsLeft <= 0) window.location.reload();
+        if (secondsLeft <= 0) {
+            secondsLeft = 5;
+            silentRefresh();
+        }
     }, 1000);
 
     function updateAlertStatus(alertId, status) {
@@ -105,7 +159,9 @@
             body: formData,
             headers: { 'X-CSRFToken': '{{ csrf_token }}' }
         }).then(res => res.json()).then(data => {
-            if (data.status === 'success') window.location.reload();
+            if (data.status === 'success') {
+                silentRefresh();
+            }
         });
     }
 </script>
