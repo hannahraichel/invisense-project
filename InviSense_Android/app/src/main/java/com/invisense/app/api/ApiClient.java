@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 
 import com.invisense.app.BuildConfig;
 
+import java.util.concurrent.TimeUnit;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -26,7 +28,12 @@ public class ApiClient {
 
     public static String getServerUrl(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_SERVER_URL, BuildConfig.BASE_URL);
+        String saved = prefs.getString(KEY_SERVER_URL, null);
+        if (saved != null && (saved.contains("ngrok") || saved.contains("127.0.0.1") || saved.contains("localhost"))) {
+            prefs.edit().remove(KEY_SERVER_URL).apply();
+            return BuildConfig.BASE_URL;
+        }
+        return saved != null ? saved : BuildConfig.BASE_URL;
     }
 
     public static void setServerUrl(Context context, String url) {
@@ -48,6 +55,10 @@ public class ApiClient {
             logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
             OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(60, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .retryOnConnectionFailure(true)
                     .addInterceptor(chain -> {
                         String token = prefs.getString(KEY_TOKEN, null);
                         Request.Builder reqBuilder = chain.request().newBuilder()
