@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Setup Exam — InviSense{% endblock %}
+{% block eyebrow %}<span class="isx-eyebrow">Administration</span>{% endblock %}
+{% block page_title %}Setup exam session{% endblock %}
+{% block page_subtitle %}Create a new shift and define the halls in use{% endblock %}
+
+{% block content %}
+<div class="isx-panel" style="max-width: 720px;">
+    <div class="isx-panel__body">
+        <form method="POST">
+            {% csrf_token %}
+            <div class="isx-field-row">
+                <div class="isx-field">
+                    <label for="date">Exam date</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                <div class="isx-field">
+                    <label for="shift">Shift</label>
+                    <select id="shift" name="shift" required>
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                        <option value="Evening">Evening</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="isx-hairline">
+
+            <h4 style="font-size:14px; margin-bottom:4px;">Halls</h4>
+            <p class="isx-small isx-muted" style="margin-bottom:16px;">
+                Just the hall number and how many students it seats — that's all this needs.
+                Seats-per-row only controls how row labels look (A1, A2 …) when seating is
+                auto-allocated. You'll assign invigilators from the next page.
+            </p>
+
+            <div id="halls-container">
+                <div class="isx-field-row hall-entry">
+                    <div class="isx-field isx-mb-0">
+                        <label class="isx-small isx-muted" style="text-transform:none; font-weight:500;">Hall number</label>
+                        <input type="text" name="hall_number" placeholder="e.g. 101" required>
+                    </div>
+                    <div class="isx-field isx-mb-0">
+                        <label class="isx-small isx-muted" style="text-transform:none; font-weight:500;">Capacity</label>
+                        <input type="text" name="capacity" placeholder="e.g. 30" value="30" required>
+                    </div>
+                    <div class="isx-field isx-mb-0">
+                        <label class="isx-small isx-muted" style="text-transform:none; font-weight:500;">Seats per row</label>
+                        <input type="text" name="seats_per_row" placeholder="e.g. 6" value="6">
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="isx-btn isx-btn--ghost isx-btn--sm" onclick="addHall()" style="margin: 6px 0 28px;">
+                {% include "partials/icon.html" with name="plus" %} Add another hall
+            </button>
+
+            <div style="text-align:right;">
+                <button type="submit" class="isx-btn isx-btn--accent">Create session</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function addHall() {
+        const container = document.getElementById('halls-container');
+        const entry = document.createElement('div');
+        entry.className = 'isx-field-row hall-entry';
+        entry.style.marginTop = '14px';
+        entry.innerHTML = `
+            <div class="isx-field isx-mb-0">
+                <input type="text" name="hall_number" placeholder="e.g. 102" required>
+            </div>
+            <div class="isx-field isx-mb-0">
+                <input type="text" name="capacity" placeholder="e.g. 30" value="30" required>
+            </div>
+            <div class="isx-field isx-mb-0">
+                <input type="text" name="seats_per_row" placeholder="e.g. 6" value="6">
+            </div>
+        `;
+        container.appendChild(entry);
+    }
+</script>
+{% endblock %}
