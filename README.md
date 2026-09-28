@@ -218,3 +218,4 @@ Log in normally, then check Supabase's **Table Editor** for
 - `AuditLog` is intentionally lightweight (who/what/when, not a full
   field-level diff) — enough to answer "who stopped this and when"
   without building a full versioning system.
+UI design documentation update
